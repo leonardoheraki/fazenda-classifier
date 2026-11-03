@@ -45,8 +45,13 @@ com as oito verificações abaixo concluídas:
 
 Saída informada: `Integração QGIS: 8 verificações concluídas.`
 Isso documenta o ambiente do autor; não certifica todas as versões e plataformas
-incluídas na faixa de compatibilidade declarada. A repetição dessas oito
-verificações no QGIS com a RC3 ainda não foi observada neste registro.
+incluídas na faixa de compatibilidade declarada.
+
+Após informar a instalação da RC3, o autor forneceu nova captura do Console
+Python em 02/11/2026, mostrando novamente as oito verificações concluídas sem
+erros. Essa evidência registra a repetição do teste sintético no ambiente do
+autor; não demonstra por si só a reclassificação de uma UA real sem duplicação
+de amostras, nem mede a acurácia botânica ou a precisão das alturas em campo.
 
 ## Fluxos com rasters reais na RC2
 

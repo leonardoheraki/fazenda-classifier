@@ -96,8 +96,10 @@ run()
 O teste de integração usa rasters sintéticos temporários e não modifica as
 camadas do projeto. O autor relatou os oito testes concluídos em seu QGIS em
 02/11/2026. Consulte [o registro de validação](docs/VALIDACAO.md) para o escopo
-dos testes reais e suas limitações. As oito verificações no QGIS foram observadas
-na RC2; sua execução na RC3 ainda precisa ser documentada.
+dos testes reais e suas limitações. Após informar a instalação da RC3, o autor
+forneceu nova captura do Console Python com as oito verificações concluídas.
+A reclassificação do mesmo conglomerado sem duplicar amostras ainda precisa
+ser conferida na interface real.
 
 ## Verificação de segurança da RC3
 
