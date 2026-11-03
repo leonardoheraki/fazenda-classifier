@@ -1,16 +1,18 @@
 # Changelog
 
 ## 1.1.0-rc3 — 2026-11-02
+QGIS plugin for forest inventory and UAV data analysis, integrating sampling plot clusters, DSM/DTM canopy height measurements, manual tree crown delineation, crown area and maximum diameter measurements, optional deep learning species classification from RGB imagery, and georeferenced CSV export for Fazenda ECO. These workflows provide structural forest data to support forest carbon research, aboveground carbon (AGC) modelling, and climate studies using external models.
 
-- Resolve all 14 locally reproduced Bandit findings without rule suppressions.
-- Replace optimizable assertions in the QGIS integration test with unittest checks.
-- Import the actual UI module with isolated API adapters in headless tests,
-  removing dynamically generated test code.
-- Validate the UA field before removing previous species results and stop
-  reclassification when the provider reports a deletion failure.
-- Add regression coverage for selective cleanup, missing fields and deletion failure.
-- Pass 31 unit tests in normal and optimized Python, and Bandit 1.9.4 with no findings.
-- Retain the RC2 height methods, crown metrics, CNN settings and CSV schemas.
+Changes in this version:
+
+- Improved validation and error handling when removing previous classification results, helping prevent duplicate samples during conglomerate reclassification.
+- Updated integration checks to remain active under optimized Python.
+- Reworked interface tests to import the actual plugin module using isolated API adapters.
+- Passed 31 automated tests in normal and optimized Python.
+- Documented eight successful QGIS integration checks reported by the author after RC3 installation.
+- Preserved canopy height methods, crown measurements, classification settings, and CSV schemas.
+
+Scientific scope: AGC estimation and climate projections require external models and appropriate field validation. This version provides supporting measurements and exports; it does not calculate AGC or run climate projections directly.
 
 ## 1.1.0-rc2 — 2026-11-02
 
