@@ -2,17 +2,15 @@
 
 These checks catch state/routing regressions; they do not replace a QGIS GUI test.
 """
-import ast
 import importlib.util
+import sys
 import tempfile
 import types
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location("tree_flow_record", ROOT / "tree.py")
-tree = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(tree)
 
 
 class Point:
@@ -28,24 +26,101 @@ class Widget:
 
 
 def window_class(project):
-    source = ast.parse((ROOT / "__init__.py").read_text())
-    original = next(n for n in source.body if isinstance(n, ast.ClassDef) and n.name == "MainWindow")
-    names = {"select_area", "_show_classification", "_show_classification_error",
-             "_update_tree_classification_label", "_require_tree_crs", "finish_polygon_capture"}
-    methods = [n for n in original.body if isinstance(n, ast.FunctionDef) and n.name in names]
-    cls = ast.ClassDef(name="Window", bases=[], keywords=[], body=methods, decorator_list=[])
-    module = ast.fix_missing_locations(ast.Module(body=[cls], type_ignores=[]))
-    environment = dict(
-        QgsProject=types.SimpleNamespace(instance=lambda: project),
-        Qt=types.SimpleNamespace(LeftButton=1),
-        QgsWkbTypes=types.SimpleNamespace(PolygonGeometry=3),
-        require_metric_crs=lambda crs: None, crs_label=lambda crs: crs,
-        transform_point=lambda p, *args: p, TreeMeasurement=tree.TreeMeasurement,
-        SpatialError=ValueError, os=__import__("os"),
-        QMessageBox=types.SimpleNamespace(warning=lambda *args: None, information=lambda *args: None),
+    """Import the actual plugin with isolated adapters, without generating code.
+
+    The real QGIS constructor is deliberately not called. Only API calls outside
+    these routing/state checks are adapted, and sys.modules is restored on exit.
+    """
+    modules = {name: types.ModuleType(name) for name in (
+        "qgis", "qgis.PyQt", "qgis.PyQt.uic", "qgis.PyQt.QtWidgets",
+        "qgis.PyQt.QtGui", "qgis.PyQt.QtCore", "qgis.core", "qgis.gui",
+        "numpy", "PIL",
+    )}
+    for name in ("qgis", "qgis.PyQt", "PIL"):
+        modules[name].__path__ = []
+    modules["qgis.PyQt"].uic = modules["qgis.PyQt.uic"]
+    modules["PIL"].Image = None
+    groups = {
+        "qgis.PyQt.QtWidgets": (
+            "QFileDialog QMessageBox QMainWindow QPushButton QLabel QComboBox QFrame QAction"
+        ),
+        "qgis.PyQt.QtGui": "QIcon QColor QImage QPainter",
+        "qgis.PyQt.QtCore": "QVariant QObject",
+        "qgis.core": (
+            "QgsSettings QgsMessageLog Qgis QgsRectangle QgsRasterLayer QgsRaster "
+            "QgsRasterPipe QgsRasterFileWriter QgsVectorLayer QgsField QgsFeature "
+            "QgsGeometry QgsMapSettings QgsMapRendererCustomPainterJob "
+            "QgsCoordinateTransform QgsUnitTypes"
+        ),
+        "qgis.gui": "QgsMapToolEmitPoint QgsRubberBand",
+    }
+    for module_name, names in groups.items():
+        for name in names.split():
+            setattr(modules[module_name], name, type(name, (), {}))
+    modules["qgis.PyQt.QtCore"].Qt = types.SimpleNamespace(LeftButton=1)
+    modules["qgis.PyQt.QtCore"].pyqtSignal = lambda *args: None
+    core = modules["qgis.core"]
+    core.QgsProject = types.SimpleNamespace(instance=lambda: project)
+    core.QgsWkbTypes = types.SimpleNamespace(PolygonGeometry=3)
+    core.QgsPointXY = Point
+    core.QgsCsException = RuntimeError
+    modules["qgis.PyQt.QtWidgets"].QMessageBox = types.SimpleNamespace(
+        warning=lambda *args: None, information=lambda *args: None,
     )
-    exec(compile(module, str(ROOT / "__init__.py"), "exec"), environment)
-    return environment["Window"]
+    package = "_fazenda_headless_plugin"
+    spec = importlib.util.spec_from_file_location(
+        package, ROOT / "__init__.py", submodule_search_locations=[str(ROOT)],
+    )
+    plugin = importlib.util.module_from_spec(spec)
+    modules[package] = plugin
+    with patch.dict(sys.modules, modules):
+        spec.loader.exec_module(plugin)
+    plugin.require_metric_crs = lambda crs: None
+    plugin.crs_label = lambda crs: crs
+    plugin.transform_point = lambda point, *args: point
+    return plugin.MainWindow
+
+
+class SpeciesFeature:
+    def __init__(self, feature_id, ua_id):
+        self.feature_id, self.ua_id = feature_id, ua_id
+
+    def id(self):
+        return self.feature_id
+
+    def __getitem__(self, name):
+        if name != "UA":
+            raise KeyError(name)
+        return self.ua_id
+
+
+class SpeciesLayer:
+    def __init__(self, *, has_ua=True, can_delete=True):
+        self.has_ua, self.can_delete = has_ua, can_delete
+        self.features = [SpeciesFeature(1, "CG_001"), SpeciesFeature(2, "CG_002"),
+                         SpeciesFeature(3, "CG_001")]
+        self.delete_calls = []
+
+    def fields(self):
+        return types.SimpleNamespace(indexFromName=lambda name: 0 if self.has_ua else -1)
+
+    def getFeatures(self):
+        return iter(self.features)
+
+    def dataProvider(self):
+        return self
+
+    def deleteFeatures(self, ids):
+        self.delete_calls.append(list(ids))
+        if self.can_delete:
+            self.features = [f for f in self.features if f.id() not in ids]
+        return self.can_delete
+
+    def updateExtents(self):
+        return None
+
+    def triggerRepaint(self):
+        return None
 
 
 class WindowFlowTests(unittest.TestCase):
@@ -54,7 +129,8 @@ class WindowFlowTests(unittest.TestCase):
         self.addCleanup(self.directory.cleanup)
         self.work = "EPSG:31982"
         self.project = types.SimpleNamespace(crs=lambda: self.work)
-        self.window = window_class(self.project)()
+        window_type = window_class(self.project)
+        self.window = window_type.__new__(window_type)
         w = self.window
         w._closed = False
         w._classification_pending = False
@@ -146,6 +222,25 @@ class WindowFlowTests(unittest.TestCase):
         self.work = "EPSG:32722"
         with self.assertRaises(ValueError):
             w._require_tree_crs()
+
+    def test_reclassification_removes_only_the_selected_ua(self):
+        layer = SpeciesLayer()
+        self.assertEqual(self.window.clear_species_results_for_ua(layer, "CG_001"), 2)
+        self.assertEqual([feature.id() for feature in layer.features], [2])
+        self.assertEqual(layer.delete_calls, [[1, 3]])
+
+    def test_missing_ua_field_cannot_delete_existing_samples(self):
+        layer = SpeciesLayer(has_ua=False)
+        with self.assertRaisesRegex(ValueError, "campo obrigatório UA"):
+            self.window.clear_species_results_for_ua(layer, "CG_001")
+        self.assertEqual(len(layer.features), 3)
+        self.assertEqual(layer.delete_calls, [])
+
+    def test_failed_deletion_stops_reclassification(self):
+        layer = SpeciesLayer(can_delete=False)
+        with self.assertRaisesRegex(ValueError, "evitar duplicação"):
+            self.window.clear_species_results_for_ua(layer, "CG_001")
+        self.assertEqual(len(layer.features), 3)
 
 
 if __name__ == "__main__":

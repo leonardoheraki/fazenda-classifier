@@ -6,13 +6,32 @@ ou a precisão das alturas em relação a medições de campo.
 
 ## Testes automatizados
 
-Foram concluídos 28 testes de lógica numérica, estado e exportação, com
+Na RC2 foram concluídos 28 testes de lógica numérica, estado e exportação, com
 adaptadores mínimos da API do QGIS. Esses testes não executam a interface real,
 PROJ/GEOS do QGIS ou a CNN com os pesos treinados.
 
+Na RC3, os 31 testes passaram em Python normal e com `python -O`. Os três testes
+adicionados cobrem a exclusão apenas da UA escolhida, a preservação das amostras
+quando falta o campo UA e a interrupção quando o provedor recusa a exclusão.
+O adaptador agora importa o módulo completo da interface com APIs isoladas;
+não gera trechos de código para execução. Os testes de integração passaram a
+usar `unittest` para não serem desativados pela otimização do Python.
+
+## Análise de segurança da RC3
+
+A RC2 foi submetida ao portal QGIS, que mostrou bloqueio no Bandit com 14
+ocorrências. As outras quatro verificações do portal foram concluídas sem
+apontamentos na captura fornecida pelo autor.
+
+O Bandit 1.9.4 reproduziu localmente 14 ocorrências no mesmo código: B101 (12),
+B102 (1) e B112 (1). Após os ajustes da RC3, a análise local do código não
+apresentou ocorrências nem erros de leitura. Nenhuma regra foi ignorada e os
+testes continuam no pacote. O resultado local não certifica a segurança integral
+do complemento e não equivale à aprovação do portal.
+
 ## Integração no QGIS do autor
 
-O autor executou `fazenda_classifier.tests.smoke_qgis.run()` e forneceu a saída
+Na RC2, o autor executou `fazenda_classifier.tests.smoke_qgis.run()` e forneceu a saída
 com as oito verificações abaixo concluídas:
 
 1. SRC idêntico: máximo em um centro real de pixel e altura sintética de 49,2 m.
@@ -26,7 +45,8 @@ com as oito verificações abaixo concluídas:
 
 Saída informada: `Integração QGIS: 8 verificações concluídas.`
 Isso documenta o ambiente do autor; não certifica todas as versões e plataformas
-incluídas na faixa de compatibilidade declarada.
+incluídas na faixa de compatibilidade declarada. A repetição dessas oito
+verificações no QGIS com a RC3 ainda não foi observada neste registro.
 
 ## Fluxos com rasters reais na RC2
 

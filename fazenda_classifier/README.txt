@@ -1,4 +1,4 @@
-FAZENDA CLASSIFIER 1.1.0-rc2 — CANDIDATO PARA TESTE NO QGIS 3.36–3.x
+FAZENDA CLASSIFIER 1.1.0-rc3 — CANDIDATO PARA TESTE NO QGIS 3.36–3.x
 
 Forest sampling tools for QGIS. Create metric plots, sample canopy height from
 DSM/DTM, and optionally classify RGB patches using a user-supplied LeNet model.
@@ -6,7 +6,7 @@ DSM/DTM, and optionally classify RGB patches using a user-supplied LeNet model.
 INSTALAÇÃO PARA TESTE
 1. Desative a versão antiga do Fazenda Classifier no gerenciador de complementos.
 2. Complementos > Gerenciar e Instalar Complementos > Instalar a partir de ZIP.
-3. Selecione fazenda_classifier_1.1.0-rc2.zip e ative Fazenda Classifier.
+3. Selecione fazenda_classifier_1.1.0-rc3.zip e ative Fazenda Classifier.
 4. O comando Classificar Imagem aparece no menu Raster e na barra de ferramentas.
 5. A instalação não precisa do arquivo .pth para gerar parcelas e alturas.
 
@@ -69,7 +69,7 @@ A compatibilidade do plugin com o modelo CMIP6 não certifica a precisão local
 desse modelo ou sua transferência para outras áreas.
 
 TESTES
-O código compila e passou por 28 testes de coordenadas, pixels, NoData, medidas,
+O código compila e passou por 31 testes de coordenadas, pixels, NoData, medidas,
 estados de classificação, isolamento entre árvores e exportação CSV. Os testes
 de interface usam adaptadores mínimos da API e não substituem o QGIS real.
 O ambiente de preparação não tem QGIS ou PyTorch: interface, PROJ real e
@@ -83,9 +83,9 @@ A RC2 acrescenta três verificações de copa e estado às cinco de rasters.
 O teste usa GeoTIFFs temporários sintéticos e não modifica seu projeto.
 Faça também o roteiro de interface em TESTE_E_PUBLICACAO.txt antes de publicar.
 
-LICENÇA DO CÓDIGO — PROPOSTA PARA A PUBLICAÇÃO
-GPL-2.0-or-later, texto integral em LICENSE, preparada para revisão do autor
-antes de qualquer envio público. Não atribui essa licença aos pesos externos.
+LICENÇA DO CÓDIGO
+GPL-2.0-or-later, texto integral em LICENSE. Essa licença não se aplica
+automaticamente aos pesos externos ou aos dados de campo.
 
 CORREÇÕES DA RC2 — ÁRVORE INDIVIDUAL
 O teste de 02/11/2026 revelou exportação com Desconhecida e probabilidades vazias.
@@ -122,3 +122,14 @@ O autor executou as oito verificações de integração e forneceu a saída sem 
 Também foram conferidos o fluxo individual e os CSVs de um conglomerado real,
 com 100 pontos de altura e 625 recortes classificados. Isso não mede a acurácia
 botânica ou a precisão de campo. Consulte docs/VALIDACAO.md no repositório.
+
+CORREÇÕES DA RC3 — ANÁLISE AUTOMÁTICA
+O Bandit 1.9.4 reproduziu 14 ocorrências na RC2. A RC3 substitui os asserts do
+teste de integração por verificações unittest, que continuam ativas com python -O;
+importa o módulo real da interface nos testes sem gerar código; e valida o campo
+UA e o resultado da exclusão antes de reclassificar um conglomerado. Uma falha
+na exclusão interrompe a operação com mensagem explícita para evitar duplicação.
+Os 31 testes passaram em Python normal e otimizado. A análise local do Bandit
+não apresentou ocorrências; nenhuma regra foi desativada. Os testes continuam
+incluídos no pacote. O portal fará uma nova análise após o envio desta versão.
+Repita as oito verificações de integração no QGIS após instalar a RC3 e reiniciar.

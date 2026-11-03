@@ -674,18 +674,19 @@ class MainWindow(QMainWindow):
         mais de uma vez antes da exportação do CSV.
         """
 
-        ids_para_remover = []
+        if species_layer.fields().indexFromName("UA") < 0:
+            raise SpatialError("A camada de espécies não possui o campo obrigatório UA.")
 
-        for feat in species_layer.getFeatures():
-            try:
-                if feat["UA"] == ua_id:
-                    ids_para_remover.append(feat.id())
-            except Exception:
-                continue
+        # Validate the layer before changing records; malformed features must not
+        # be silently ignored and leave duplicate samples after reclassification.
+        ids_para_remover = [feat.id() for feat in species_layer.getFeatures()
+                            if feat["UA"] == ua_id]
 
         if ids_para_remover:
             provider = species_layer.dataProvider()
-            provider.deleteFeatures(ids_para_remover)
+            if not provider.deleteFeatures(ids_para_remover):
+                raise SpatialError("Não foi possível remover os resultados anteriores desta UA. "
+                                   "A reclassificação foi interrompida para evitar duplicação.")
             species_layer.updateExtents()
             species_layer.triggerRepaint()
 
@@ -1023,10 +1024,14 @@ class MainWindow(QMainWindow):
 
         # Remove resultados anteriores do mesmo conglomerado antes de nova execução.
         # Isso evita duplicação no CSV quando o usuário reprocessa o mesmo UA.
-        registros_removidos = self.clear_species_results_for_ua(
-            species_layer=species_layer,
-            ua_id=ua_id,
-        )
+        try:
+            registros_removidos = self.clear_species_results_for_ua(
+                species_layer=species_layer,
+                ua_id=ua_id,
+            )
+        except SpatialError as error:
+            QMessageBox.warning(self, "Reclassificação interrompida", str(error))
+            return
 
         temp_dir = os.path.join(
             tempfile.gettempdir(),

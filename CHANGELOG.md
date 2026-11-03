@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.1.0-rc3 — 2026-11-02
+
+- Resolve all 14 locally reproduced Bandit findings without rule suppressions.
+- Replace optimizable assertions in the QGIS integration test with unittest checks.
+- Import the actual UI module with isolated API adapters in headless tests,
+  removing dynamically generated test code.
+- Validate the UA field before removing previous species results and stop
+  reclassification when the provider reports a deletion failure.
+- Add regression coverage for selective cleanup, missing fields and deletion failure.
+- Pass 31 unit tests in normal and optimized Python, and Bandit 1.9.4 with no findings.
+- Retain the RC2 height methods, crown metrics, CNN settings and CSV schemas.
+
 ## 1.1.0-rc2 — 2026-11-02
 
 - Associate tree measurements and classification with the selected tree.

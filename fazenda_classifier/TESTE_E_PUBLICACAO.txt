@@ -1,4 +1,4 @@
-STATUS: CANDIDATO PARA INSTALAÇÃO LOCAL; AINDA NÃO ENVIADO AO REPOSITÓRIO QGIS
+STATUS: RC3 PREPARADA PARA TESTE E NOVO ENVIO; RC2 BLOQUEADA PELO BANDIT NO PORTAL QGIS
 
 ROTEIRO NO QGIS DO AUTOR
 1. Abra uma cópia do projeto e mantenha a versão antiga do complemento desativada.
@@ -15,21 +15,37 @@ ROTEIRO NO QGIS DO AUTOR
    para a mesma entrada. O limiar 0,60 e a ordem das três classes foram preservados.
 9. Feche/reabra o complemento; confira remoção dos ícones ao desativá-lo.
 
-PENDÊNCIAS REAIS PARA PUBLICAR
-- Disponibilizar o código em github.com/leonardoheraki/fazenda-classifier.
-  Os links homepage, repository e tracker já estão preenchidos no metadata.txt.
-  A fonte publicada deve corresponder à fonte incluída no ZIP.
+PUBLICAÇÃO
+- O código está em github.com/leonardoheraki/fazenda-classifier. Homepage,
+  repository e tracker estão preenchidos no metadata.txt. A fonte publicada
+  deve corresponder à fonte incluída no ZIP.
 - Manter a licença GPL-2.0-or-later do código e respeitar os direitos dos recursos externos.
 - Disponibilizar os pesos e sua licença em um canal separado se a classificação
   pré-treinada for oferecida ao público. Os pesos não cabem no pacote de 25 MB.
 - A RC2 passou as oito verificações de integração no QGIS do autor em 02/11/2026.
   Os testes de campo de espécies e alturas devem ser documentados separadamente.
-- Usar uma conta OSGeo para enviar a versão e acompanhar a avaliação do QGIS.
+- Após instalar a RC3 e reiniciar o QGIS, repita os oito testes de integração
+  do Console Python e confira geração, reclassificação e exportação.
+- No portal QGIS, abra Fazenda Classifier e use Add version para enviar
+  fazenda_classifier_1.1.0-rc3.zip. O pacote precisa conter uma única pasta
+  raiz fazenda_classifier/. O arquivo de fontes baixado do GitHub tem outra estrutura.
+- Confira os resultados em Versions > 1.1.0-rc3 > Security Scan. Cada nova versão
+  passa por nova análise; a aprovação final depende dos mantenedores do portal.
+- A conta do autor no portal está vinculada ao GitHub e o e-mail foi confirmado.
+
+ANÁLISE LOCAL DA RC3
+O Bandit 1.9.4 reproduziu 14 ocorrências da RC2 (B101: 12; B102: 1; B112: 1).
+Esses trechos foram corrigidos sem desativar regras ou retirar testes do pacote.
+Os 31 testes de lógica e estado passaram em Python normal e com python -O.
+O Bandit não apresentou ocorrências no código da RC3. O resultado da nova
+análise no portal e a repetição dos testes reais no QGIS ainda precisam ser registrados.
 
 FONTES OFICIAIS CONSULTADAS EM 02/11/2026
 https://plugins.qgis.org/docs/publish
 https://plugins.qgis.org/docs/approval
 https://docs.qgis.org/3.40/en/docs/pyqgis_developer_cookbook/plugins/releasing.html
+https://plugins.qgis.org/docs/security-scanning/tools
+https://plugins.qgis.org/docs/security-scanning/troubleshooting
 
 ESTRUTURA E COMPATIBILIDADE
 ZIP com uma pasta raiz fazenda_classifier; metadados com descrição em inglês,
@@ -37,7 +53,7 @@ versão nova, author/email, ícone e indicação de dependências. LICENSE prese
 Sem .pth, bibliotecas compiladas, caches ou caminhos do computador do autor.
 Faixa declarada de candidatura: QGIS >= 3.36 e < 4.0, experimental=True.
 Isso é uma faixa proposta, não uma certificação de testes em todas as versões.
-Os campos de URLs permanecem vazios até existir um repositório real.
+Os URLs dos metadados apontam para o repositório público do projeto.
 
 A aprovação no repositório QGIS depende da avaliação de seus mantenedores.
 

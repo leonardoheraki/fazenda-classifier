@@ -4,7 +4,7 @@ QGIS plugin for forest sampling, canopy-height measurements from DSM/DTM rasters
 manual crown measurements, and optional RGB patch classification with a
 user-supplied Fazenda LeNet model.
 
-**Author:** Leonardo Heraki. **Version:** 1.1.0-rc2, experimental.
+**Author:** Leonardo Heraki. **Version:** 1.1.0-rc3, experimental.
 Proposed compatibility range: QGIS 3.36 to 3.x. QGIS 4 has not been validated.
 
 ## Funcionalidades
@@ -30,7 +30,7 @@ com o comando abaixo ou use um pacote disponibilizado nas versões do projeto.
 python scripts/build_plugin.py
 ```
 
-A saída fica em `dist/fazenda_classifier_1.1.0-rc2.zip`.
+A saída fica em `dist/fazenda_classifier_1.1.0-rc3.zip`.
 Reinicie o QGIS depois de substituir uma versão já carregada.
 Salve camadas temporárias como GeoPackage se quiser preservá-las.
 
@@ -74,11 +74,17 @@ A transformação horizontal não corrige diferenças de datum vertical.
 
 ## Testes
 
-Os 28 testes de lógica e estado usam a biblioteca padrão do Python:
+Os 31 testes de lógica e estado usam a biblioteca padrão do Python:
 
 ```bash
 python -m unittest discover -s fazenda_classifier/tests -p "test_*.py" -v
 ```
+
+Na RC3, os 31 testes também passaram com `python -O`. Os testes importam o
+módulo real da interface com adaptadores isolados, sem compilar ou executar
+trechos de código gerados. As verificações de integração usam `unittest` e
+continuam ativas com otimização. A limpeza dos resultados de uma UA agora
+valida o campo obrigatório e interrompe a reclassificação se a exclusão falhar.
 
 No Console Python do QGIS, execute os oito testes de integração:
 
@@ -90,7 +96,23 @@ run()
 O teste de integração usa rasters sintéticos temporários e não modifica as
 camadas do projeto. O autor relatou os oito testes concluídos em seu QGIS em
 02/11/2026. Consulte [o registro de validação](docs/VALIDACAO.md) para o escopo
-dos testes reais e suas limitações.
+dos testes reais e suas limitações. As oito verificações no QGIS foram observadas
+na RC2; sua execução na RC3 ainda precisa ser documentada.
+
+## Verificação de segurança da RC3
+
+O Bandit 1.9.4 reproduziu 14 ocorrências na RC2: 12 usos de `assert` no teste de
+integração, um uso de `exec` no adaptador de testes e um `except` que continuava
+sem informar o erro na limpeza de resultados por UA. A RC3 corrige esses trechos
+e passou pela análise local do Bandit sem ocorrências, sem ignorar regras ou
+remover testes do pacote. Essa análise não substitui a validação do portal QGIS
+nem os testes reais de interface e inferência.
+
+Para repetir a análise após instalar o Bandit no seu ambiente de desenvolvimento:
+
+```bash
+python -m bandit -r fazenda_classifier/
+```
 
 ## Código e licença
 
@@ -102,5 +124,6 @@ Código-fonte: https://github.com/leonardoheraki/fazenda-classifier
 
 Registro de problemas: https://github.com/leonardoheraki/fazenda-classifier/issues
 
-Os metadados do complemento apontam para esses endereços. O envio ao repositório
-oficial QGIS é uma etapa posterior à disponibilização deste código no GitHub.
+Os metadados do complemento apontam para esses endereços. A RC2 foi submetida ao
+portal QGIS e bloqueada na análise automática do Bandit. A RC3 foi preparada
+para novo envio; sua aprovação depende da análise do portal e de seus mantenedores.
