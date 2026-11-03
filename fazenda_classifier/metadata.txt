@@ -1,0 +1,20 @@
+[general]
+name=Fazenda Classifier
+description=Forest inventory tools: sampling plots, canopy heights, crown measurements, RGB species classification and CSV export.
+about=Supports forest inventory with individual crown delineation, planar area and maximum diameter measurements, and pointwise DSM/DTM heights. Creates metric sampling plots, extracts DSM maxima in 1 x 10 m windows, and samples DTM at the same physical location, with horizontal CRS conversion. Exports point measurements and CRS provenance to CSV. Plot and height tools require QGIS and NumPy only. Optional CNN classification requires PyTorch >= 2.2, compatible torchvision, Pillow, and a user-supplied Fazenda LeNet state-dict model. Trained weights are not bundled. Height sampling points are not identified individual trees and are not automatically converted to H5 or AGC. QGIS 4 support has not been validated.
+version=1.1.0-rc2
+qgisMinimumVersion=3.36
+qgisMaximumVersion=3.99
+author=Leonardo Heraki
+email=leonardoheraki@outlook.com
+homepage=https://github.com/leonardoheraki/fazenda-classifier#readme
+repository=https://github.com/leonardoheraki/fazenda-classifier
+tracker=https://github.com/leonardoheraki/fazenda-classifier/issues
+license=GPL-2.0-or-later
+category=Raster
+tags=forestry,canopy,DSM,DTM,forest inventory,remote sensing
+icon=icon.svg
+experimental=True
+deprecated=False
+hasProcessingProvider=False
+changelog=1.1.0-rc2: Tie measurements and inference to each selected tree; use selected RGB; mark missing or failed classification explicitly; unify tree CSV with area and CRS; validate crown geometry; add species CRS provenance; retain rc1 raster coordinate fixes.

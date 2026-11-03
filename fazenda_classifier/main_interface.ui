@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>650</width>
+    <height>520</height>
+   </rect>
+  </property>
+
+  <property name="windowTitle">
+   <string>Fazenda Classifier - Fazenda ECO</string>
+  </property>
+
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QVBoxLayout" name="verticalLayout">
+
+    <item>
+     <widget class="QLabel" name="titleLabel">
+      <property name="text">
+       <string>&lt;h2&gt;Fazenda Classifier&lt;/h2&gt;</string>
+      </property>
+      <property name="alignment">
+       <set>Qt::AlignCenter</set>
+      </property>
+     </widget>
+    </item>
+
+    <item>
+     <widget class="QLabel" name="subtitleLabel">
+      <property name="text">
+       <string>Classificação de espécies, altura e dados para o Fazenda ECO</string>
+      </property>
+      <property name="alignment">
+       <set>Qt::AlignCenter</set>
+      </property>
+     </widget>
+    </item>
+
+    <item>
+     <widget class="Line" name="lineTop">
+      <property name="orientation">
+       <enum>Qt::Horizontal</enum>
+      </property>
+     </widget>
+    </item>
+
+    <item>
+     <widget class="QLabel" name="treeSectionLabel">
+      <property name="text">
+       <string>&lt;h3&gt;Fluxo por árvore individual&lt;/h3&gt;</string>
+      </property>
+      <property name="alignment">
+       <set>Qt::AlignCenter</set>
+      </property>
+     </widget>
+    </item>
+
+    <item>
+     <widget class="QPushButton" name="selectAreaButton">
+      <property name="text">
+       <string>Selecionar árvore</string>
+      </property>
+     </widget>
+    </item>
+
+    <item>
+     <widget class="QPushButton" name="delimitTreeButton">
+      <property name="text">
+       <string>Delimitar Copa da Árvore</string>
+      </property>
+     </widget>
+    </item>
+
+    <item>
+     <widget class="QPushButton" name="finishDelimitationButton">
+      <property name="text">
+       <string>Finalizar Delimitação</string>
+      </property>
+     </widget>
+    </item>
+
+    <item>
+     <widget class="QLabel" name="heightLabel">
+      <property name="text">
+       <string>Altura: -</string>
+      </property>
+      <property name="alignment">
+       <set>Qt::AlignCenter</set>
+      </property>
+     </widget>
+    </item>
+
+    <item>
+     <widget class="QLabel" name="crownDiameterLabel">
+      <property name="text">
+       <string>Diâmetro máximo da Copa: -</string>
+      </property>
+      <property name="alignment">
+       <set>Qt::AlignCenter</set>
+      </property>
+     </widget>
+    </item>
+
+    <item>
+     <widget class="QLabel" name="crownAreaLabel">
+      <property name="text">
+       <string>Área da Copa: -</string>
+      </property>
+      <property name="alignment">
+       <set>Qt::AlignCenter</set>
+      </property>
+     </widget>
+    </item>
+
+    <item>
+     <widget class="QLabel" name="resultLabel">
+      <property name="text">
+       <string>Classificação: não executada</string>
+      </property>
+      <property name="alignment">
+       <set>Qt::AlignCenter</set>
+      </property>
+     </widget>
+    </item>
+
+    <item>
+     <widget class="QPushButton" name="exportButton">
+      <property name="text">
+       <string>Exportar dados da árvore CSV</string>
+      </property>
+     </widget>
+    </item>
+
+    <item>
+     <widget class="Line" name="lineBottom">
+      <property name="orientation">
+       <enum>Qt::Horizontal</enum>
+      </property>
+     </widget>
+    </item>
+
+   </layout>
+  </widget>
+ </widget>
+
+ <resources/>
+ <connections/>
+</ui>
