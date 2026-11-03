@@ -1,5 +1,11 @@
 import os
 import torch
+
+from .runtime import require_supported_torch
+
+# Check before importing torchvision or opening any external model weights.
+require_supported_torch(torch.__version__)
+
 import torch.nn as nn
 from torchvision import transforms
 from PIL import Image
@@ -120,6 +126,7 @@ class FazendaModel:
         Carrega o modelo .pth treinado com 3 classes.
         """
 
+        require_supported_torch(torch.__version__)
         if not os.path.exists(model_path):
             raise FileNotFoundError(
                 f"Modelo não encontrado: {model_path}"

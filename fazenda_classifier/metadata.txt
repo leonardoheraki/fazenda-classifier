@@ -1,8 +1,8 @@
 [general]
 name=Fazenda Classifier
 description=Forest inventory tools: sampling plots, canopy heights, crown measurements, RGB species classification and CSV export.
-about=Supports forest inventory with individual crown delineation, planar area and maximum diameter measurements, and pointwise DSM/DTM heights. Creates metric sampling plots, extracts DSM maxima in 1 x 10 m windows, and samples DTM at the same physical location, with horizontal CRS conversion. Exports point measurements and CRS provenance to CSV. Plot and height tools require QGIS and NumPy only. Optional CNN classification requires PyTorch >= 2.2, compatible torchvision, Pillow, and a user-supplied Fazenda LeNet state-dict model. Trained weights are not bundled. Height sampling points are not identified individual trees and are not automatically converted to H5 or AGC. QGIS 4 support has not been validated.
-version=1.1.0-rc3
+about=Supports forest inventory with individual crown delineation, planar area and maximum diameter measurements, and pointwise DSM/DTM heights. Creates metric sampling plots, extracts DSM maxima in 1 x 10 m windows, and samples DTM at the same physical location, with horizontal CRS conversion. Exports point measurements and CRS provenance to CSV. Plot and height tools require QGIS and NumPy only. Optional CNN classification requires stable PyTorch >= 2.10.0, compatible torchvision, Pillow, and a user-supplied Fazenda LeNet state-dict model. Trained weights are not bundled. Measurements and exports can support external forest carbon, AGC and climate studies; this version does not calculate carbon or climate projections. Height sampling points are not identified individual trees and are not automatically converted to H5 or AGC. QGIS 4 support has not been validated.
+version=1.1.0-rc4
 qgisMinimumVersion=3.36
 qgisMaximumVersion=3.99
 author=Leonardo Heraki
@@ -17,4 +17,4 @@ icon=icon.svg
 experimental=True
 deprecated=False
 hasProcessingProvider=False
-changelog=1.1.0-rc3: Resolve Bandit findings without suppressions; keep integration checks active under optimized Python; import the actual UI module in headless tests without generated code; validate the UA field and stop reclassification on deletion failure; retain rc2 measurement, inference and CRS corrections.
+changelog=1.1.0-rc4: Block model loading with affected or preview PyTorch versions; require stable PyTorch >= 2.10.0; use unique temporary workspaces independent of UA; write only to marked memory outputs; stage complete classifications before replacing previous results; preserve previous results after failures; include isolated QGIS and optional real-model test runners.

@@ -2,7 +2,6 @@ import os
 import csv
 import traceback
 import tempfile
-import shutil
 import numpy as np
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
@@ -53,6 +52,11 @@ from .spatial import (
 )
 
 from .tree import TreeMeasurement, write_tree_csv
+from .runtime import RuntimeCompatibilityError, create_species_workspace, require_ua_id
+from .outputs import (
+    find_owned_output, mark_owned_output, create_species_layer,
+    validate_previous_species, prepare_species_replacement, publish_species_replacement,
+)
 
 
 class ClassificationSignals(QObject):
@@ -86,23 +90,26 @@ class FazendaPlugin:
     def load_fazenda_model(self):
         if self.model is not None:
             return self.model
-        settings = QgsSettings()
-        local = os.path.join(self.plugin_dir, "fazenda_lenet_3classes_best.pth")
-        model_path = settings.value("FazendaClassifier/model_path", local, type=str)
-        if not os.path.isfile(model_path):
-            model_path, _ = QFileDialog.getOpenFileName(
-                self.iface.mainWindow(), "Selecionar modelo Fazenda LeNet (.pth)",
-                os.path.expanduser("~"), "PyTorch state dict (*.pth)")
-            if not model_path:
-                return None
         try:
             from .fazenda_model import FazendaModel
+            settings = QgsSettings()
+            local = os.path.join(self.plugin_dir, "fazenda_lenet_3classes_best.pth")
+            model_path = settings.value("FazendaClassifier/model_path", local, type=str)
+            if not os.path.isfile(model_path):
+                model_path, _ = QFileDialog.getOpenFileName(
+                    self.iface.mainWindow(), "Selecionar modelo Fazenda LeNet (.pth)",
+                    os.path.expanduser("~"), "PyTorch state dict (*.pth)")
+                if not model_path:
+                    return None
             model = FazendaModel(model_path=model_path, confidence_threshold=0.60)
+        except RuntimeCompatibilityError as error:
+            QMessageBox.warning(self.iface.mainWindow(), "Classificação bloqueada", str(error))
+            return None
         except (ImportError, ModuleNotFoundError) as error:
             QMessageBox.warning(self.iface.mainWindow(), "Classificação indisponível",
-                "A classificação requer PyTorch, torchvision e Pillow no Python do QGIS. "
-                "Consulte o README. A geração de parcelas e alturas pode ser usada sem a CNN."
-                f"\n\nDetalhe: {error}")
+                "A classificação requer PyTorch >= 2.10.0, torchvision compatível e Pillow "
+                "no Python do QGIS. Consulte o README. A geração de parcelas e alturas "
+                "pode ser usada sem a CNN." f"\n\nDetalhe: {error}")
             return None
         except Exception as error:
             QgsMessageLog.logMessage(traceback.format_exc(), "Fazenda Classifier", Qgis.Critical)
@@ -536,10 +543,8 @@ class MainWindow(QMainWindow):
     # =========================================================
 
     def get_vector_layer_by_name(self, name):
-        for layer in QgsProject.instance().mapLayers().values():
-            if layer.name() == name and isinstance(layer, QgsVectorLayer):
-                return layer
-        return None
+        # A matching display name alone never grants permission to edit a layer.
+        return find_owned_output(QgsProject.instance(), name)
 
     def get_or_create_m37_layers(self):
         self._check_existing_output_crs()
@@ -566,6 +571,7 @@ class MainWindow(QMainWindow):
                 QgsField("data_criacao", QVariant.String),
             ])
             conglomerados.updateFields()
+            mark_owned_output(conglomerados, "conglomerados_M37")
             QgsProject.instance().addMapLayer(conglomerados)
 
         if subparcelas is None:
@@ -584,6 +590,7 @@ class MainWindow(QMainWindow):
                 QgsField("area_m2", QVariant.Double),
             ])
             subparcelas.updateFields()
+            mark_owned_output(subparcelas, "subparcelas_M37")
             QgsProject.instance().addMapLayer(subparcelas)
 
         if pontos is None:
@@ -611,104 +618,13 @@ class MainWindow(QMainWindow):
                 QgsField("status", QVariant.String),
             ])
             pontos.updateFields()
+            mark_owned_output(pontos, "pontos_altura_M37")
             QgsProject.instance().addMapLayer(pontos)
 
         for output in (conglomerados, subparcelas, pontos):
             output.setCrs(QgsProject.instance().crs())
         self._ensure_spatial_fields(pontos)
         return conglomerados, subparcelas, pontos
-
-    def get_or_create_species_layer(self):
-        self._check_existing_output_crs()
-        crs_authid = QgsProject.instance().crs().authid()
-
-        layer = self.get_vector_layer_by_name("pontos_especies_M37")
-
-        if layer is None:
-            layer = QgsVectorLayer(
-                f"Point?crs={crs_authid}",
-                "pontos_especies_M37",
-                "memory",
-            )
-
-            pr = layer.dataProvider()
-
-            pr.addAttributes([
-                QgsField("UA", QVariant.String),
-                QgsField("amostra_id", QVariant.Int),
-                QgsField("linha", QVariant.Int),
-                QgsField("coluna", QVariant.Int),
-                QgsField("x_utm", QVariant.Double),
-                QgsField("y_utm", QVariant.Double),
-                QgsField("grid_size_m", QVariant.Double),
-                QgsField("patch_size_m", QVariant.Double),
-                QgsField("pred_class", QVariant.String),
-                QgsField("final_class", QVariant.String),
-                QgsField("confidence", QVariant.Double),
-                QgsField("threshold", QVariant.Double),
-                QgsField("status", QVariant.String),
-                QgsField("prob_AA", QVariant.Double),
-                QgsField("prob_CF", QVariant.Double),
-                QgsField("prob_OP", QVariant.Double),
-                QgsField("patch_path", QVariant.String),
-                QgsField("crs_trabalho", QVariant.String),
-                QgsField("crs_rgb", QVariant.String),
-            ])
-
-            layer.updateFields()
-            QgsProject.instance().addMapLayer(layer)
-
-        missing = [QgsField(name, QVariant.String) for name in ("crs_trabalho", "crs_rgb")
-                   if layer.fields().indexFromName(name) < 0]
-        if missing:
-            layer.dataProvider().addAttributes(missing)
-            layer.updateFields()
-        layer.setCrs(QgsProject.instance().crs())
-        return layer
-
-    def clear_species_results_for_ua(self, species_layer, ua_id):
-        """
-        Remove da camada pontos_especies_M37 os registros existentes do mesmo UA.
-
-        Evita duplicação quando a classificação do mesmo conglomerado é executada
-        mais de uma vez antes da exportação do CSV.
-        """
-
-        if species_layer.fields().indexFromName("UA") < 0:
-            raise SpatialError("A camada de espécies não possui o campo obrigatório UA.")
-
-        # Validate the layer before changing records; malformed features must not
-        # be silently ignored and leave duplicate samples after reclassification.
-        ids_para_remover = [feat.id() for feat in species_layer.getFeatures()
-                            if feat["UA"] == ua_id]
-
-        if ids_para_remover:
-            provider = species_layer.dataProvider()
-            if not provider.deleteFeatures(ids_para_remover):
-                raise SpatialError("Não foi possível remover os resultados anteriores desta UA. "
-                                   "A reclassificação foi interrompida para evitar duplicação.")
-            species_layer.updateExtents()
-            species_layer.triggerRepaint()
-
-        return len(ids_para_remover)
-
-    def clear_species_layer_all(self):
-        """Remove todos os registros da camada pontos_especies_M37, se existir."""
-
-        species_layer = self.get_vector_layer_by_name("pontos_especies_M37")
-
-        if species_layer is None:
-            return 0
-
-        ids_para_remover = [feat.id() for feat in species_layer.getFeatures()]
-
-        if ids_para_remover:
-            provider = species_layer.dataProvider()
-            provider.deleteFeatures(ids_para_remover)
-            species_layer.updateExtents()
-            species_layer.triggerRepaint()
-
-        return len(ids_para_remover)
 
     def generate_next_ua_id(self, conglomerados_layer):
         count = conglomerados_layer.featureCount() + 1
@@ -977,7 +893,7 @@ class MainWindow(QMainWindow):
         gera 625 patches de ortofoto, aplica a CNN Fazenda_LeNet
         e grava os pontos classificados em pontos_especies_M37.
 
-        Versão com diagnóstico do primeiro erro real.
+        Publica a nova camada apenas depois de completar todas as amostras.
         """
 
         if not self._ensure_model():
@@ -998,7 +914,11 @@ class MainWindow(QMainWindow):
             )
             return
 
-        ua_id = cong_feat["UA"]
+        try:
+            ua_id = require_ua_id(cong_feat["UA"])
+        except (ValueError, KeyError) as error:
+            QMessageBox.warning(self, "Conglomerado inválido", str(error))
+            return
         geom = cong_feat.geometry()
 
         if geom is None or geom.isEmpty():
@@ -1019,36 +939,21 @@ class MainWindow(QMainWindow):
         n_linhas = 25
         n_colunas = 25
 
-        species_layer = self.get_or_create_species_layer()
-        provider = species_layer.dataProvider()
-
-        # Remove resultados anteriores do mesmo conglomerado antes de nova execução.
-        # Isso evita duplicação no CSV quando o usuário reprocessa o mesmo UA.
         try:
-            registros_removidos = self.clear_species_results_for_ua(
-                species_layer=species_layer,
-                ua_id=ua_id,
-            )
-        except SpatialError as error:
-            QMessageBox.warning(self, "Reclassificação interrompida", str(error))
+            self._check_existing_output_crs()
+            previous_layer = self.get_vector_layer_by_name("pontos_especies_M37")
+            validate_previous_species(previous_layer, QgsProject.instance().crs())
+            species_layer = create_species_layer(QgsProject.instance().crs())
+            temp_dir = create_species_workspace(ua_id)
+        except (SpatialError, ValueError, OSError) as error:
+            QMessageBox.warning(self, "Classificação interrompida", str(error))
             return
-
-        temp_dir = os.path.join(
-            tempfile.gettempdir(),
-            "fazenda_species_patches",
-            ua_id
-        )
-
-        if os.path.exists(temp_dir):
-            shutil.rmtree(temp_dir)
-
-        os.makedirs(temp_dir, exist_ok=True)
+        new_features = []
 
         total = 0
         processadas = 0
         rejeitadas = 0
         erro_processamento = 0
-        primeiro_erro = None
 
         contagem_classes = {
             "Araucaria angustifolia": 0,
@@ -1066,7 +971,7 @@ class MainWindow(QMainWindow):
                 f"Amostras esperadas: 625\n"
                 f"Patch: {patch_size_m} m × {patch_size_m} m\n"
                 f"Limiar: 0.60\n"
-                f"Registros anteriores removidos deste UA: {registros_removidos}\n\n"
+                "Os resultados anteriores serão preservados até a conclusão.\n\n"
                 f"O processamento pode levar alguns minutos."
             )
         )
@@ -1085,7 +990,7 @@ class MainWindow(QMainWindow):
                 if not geom.contains(point_geom):
                     continue
 
-                patch_name = f"{ua_id}_L{linha + 1:02d}_C{coluna + 1:02d}.png"
+                patch_name = f"L{linha + 1:02d}_C{coluna + 1:02d}.png"
                 patch_path = os.path.join(temp_dir, patch_name)
 
                 try:
@@ -1119,28 +1024,15 @@ class MainWindow(QMainWindow):
 
                     processadas += 1
 
-                except Exception as e:
-                    erro_processamento += 1
-
-                    if primeiro_erro is None:
-                        primeiro_erro = str(e)
-
-                    predicted_class = None
-                    final_class = "erro_processamento"
-                    confidence = None
-                    threshold = 0.60
-                    status = f"erro_processamento: {str(e)}"
-                    prob_aa = None
-                    prob_cf = None
-                    prob_op = None
-
-                    print("\nERRO NA CLASSIFICAÇÃO DE ESPÉCIES")
-                    print(f"UA: {ua_id}")
-                    print(f"Amostra: {amostra_id}")
-                    print(f"Linha: {linha + 1}")
-                    print(f"Coluna: {coluna + 1}")
-                    print(f"Patch: {patch_path}")
-                    print(f"Erro: {e}")
+                except Exception as error:
+                    self.speciesStatusLabel.setText(
+                        f"Espécies: {ua_id} | execução interrompida; resultados anteriores preservados."
+                    )
+                    QMessageBox.warning(self, "Classificação interrompida",
+                        f"Falha na amostra {amostra_id}: {error}\n\n"
+                        "Nenhuma classificação anterior foi substituída. "
+                        f"Recortes desta tentativa: {temp_dir}")
+                    return
 
                 feat = QgsFeature(species_layer.fields())
                 feat.setGeometry(point_geom)
@@ -1166,12 +1058,19 @@ class MainWindow(QMainWindow):
                     crs_label(ortho_layer.crs()),
                 ])
 
-                provider.addFeature(feat)
+                new_features.append(feat)
 
                 amostra_id += 1
                 total += 1
 
-        species_layer.updateExtents()
+        try:
+            registros_substituidos = prepare_species_replacement(
+                previous_layer, species_layer, ua_id, new_features)
+            publish_species_replacement(QgsProject.instance(), previous_layer, species_layer)
+        except Exception as error:
+            QMessageBox.warning(self, "Classificação não publicada",
+                f"{error}\n\nA classificação anterior não foi sobrescrita.")
+            return
         self.iface.mapCanvas().refresh()
 
         self.speciesStatusLabel.setText(
@@ -1186,7 +1085,7 @@ class MainWindow(QMainWindow):
             f"Processadas: {processadas}\n"
             f"Rejeitadas como espécie não identificada: {rejeitadas}\n"
             f"Erros de processamento: {erro_processamento}\n"
-            f"Registros anteriores removidos deste UA: {registros_removidos}\n\n"
+            f"Registros anteriores substituídos desta UA: {registros_substituidos}\n\n"
             f"Resumo por classe final:\n"
             f"Araucaria angustifolia: {contagem_classes['Araucaria angustifolia']}\n"
             f"Cedrela fissilis: {contagem_classes['Cedrela fissilis']}\n"
@@ -1194,12 +1093,6 @@ class MainWindow(QMainWindow):
             f"Espécie não identificada: {contagem_classes['espécie não identificada']}\n\n"
             f"Os patches temporários foram salvos em:\n{temp_dir}"
         )
-
-        if primeiro_erro is not None:
-            mensagem += (
-                "\n\nPrimeiro erro encontrado:\n"
-                f"{primeiro_erro}"
-            )
 
         QMessageBox.information(
             self,
@@ -1674,9 +1567,9 @@ class MainWindow(QMainWindow):
         for name in ("conglomerados_M37", "subparcelas_M37", "pontos_altura_M37", "pontos_especies_M37"):
             layer = self.get_vector_layer_by_name(name)
             if layer is not None and layer.crs() != project_crs:
-                raise SpatialError(f"A camada {name} foi criada em outro SRC. "
-                    "Use o SRC em que ela foi criada ou salve e renomeie as camadas antigas "
-                    "antes de gerar um novo conjunto. Os dados existentes não foram alterados.")
+                raise SpatialError(f"A saída RC4 {name} foi criada em outro SRC. "
+                    "Retorne ao SRC original ou salve e remova as saídas RC4 do projeto "
+                    "antes de gerar outro conjunto. Os dados existentes não foram alterados.")
 
     def _ensure_spatial_fields(self, layer):
         fields = [QgsField(name, QVariant.String) for name in

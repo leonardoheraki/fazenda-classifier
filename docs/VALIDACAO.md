@@ -76,3 +76,41 @@ Ainda é útil documentar: seleção consecutiva de árvores na interface real;
 reclassificação do mesmo conglomerado sem duplicar amostras; comportamento em
 outras plataformas e versões; referência de campo independente para espécies
 e alturas. A aprovação no repositório QGIS é uma etapa posterior.
+
+## RC4 — 03/11/2026
+
+A RC4 trata os riscos identificados depois da análise automática da RC3:
+versões afetadas do PyTorch, diretório temporário derivado da UA, exclusão de
+resultados antes do sucesso e adoção de camadas apenas pelo nome.
+
+Os 52 testes automatizados passaram com Python normal e `python -O`. Eles incluem
+adaptações isoladas de QGIS/Qt e uma CNN simulada. A comparação de versões bloqueia
+2.5.0+cpu antes de abrir pesos ou importar torchvision. Os testes de caminhos cobrem
+separadores Unix/Windows, caminhos absolutos, compartilhamentos e identificadores
+vazios. A substituição usa uma camada de memória preparada, verifica a gravação
+completa e preserva as outras UAs. Foram simulados gravação parcial, recusa do
+projeto, falha depois de destacar a camada antiga, edição manual ativa, erro de
+recorte e erro de inferência. Duas classificações simuladas de 625 amostras não
+acumularam registros para a mesma UA.
+
+Os três testes antigos de exclusão por UA foram substituídos por verificações de
+preservação e substituição, porque a RC4 não exclui registros do provedor anterior.
+As regras de alturas, copa e CSV das versões anteriores continuam cobertas.
+
+`smoke_rc4.run()` inclui os oito testes nativos anteriores e quatro adicionais,
+com projeto QGIS isolado. `smoke_model.run()` testa a CNN real somente com uma
+versão suportada do PyTorch e pesos/recortes escolhidos pelo autor. A presença
+no pacote não significa que esses roteiros tenham sido executados neste ambiente.
+
+Limites: QGIS e PyTorch não estão instalados no ambiente de preparação. Não houve
+execução independente do modelo treinado, validação de DLLs no Windows nem teste
+nativo da RC4 no QGIS do autor. Com seu PyTorch 2.5.0+cpu, a CNN deve ficar bloqueada;
+parcelas, alturas e copas podem ser testadas antes de mudar as bibliotecas.
+A comparação com PyTorch 2.10.0/torchvision 0.25.0 deve usar instalação e perfil
+separados, os mesmos pesos e recortes, preservando o ambiente de trabalho.
+
+Análise estática local da RC4: Bandit 1.9.4 sem ocorrências ou erros; varredura
+com detect-secrets 1.5.0 sem ocorrências nas regras padrão e sem verificação remota.
+Nenhuma regra foi suprimida. O pacote contém os testes e seu conteúdo foi comparado
+com o código-fonte, com CRC conferido. Esses resultados não são auditoria completa
+nem aprovação automática ou manual do portal QGIS.

@@ -1,70 +1,81 @@
-STATUS: RC3 PREPARADA PARA TESTE E NOVO ENVIO; RC2 BLOQUEADA PELO BANDIT NO PORTAL QGIS
+FAZENDA CLASSIFIER 1.1.0-rc4 — ROTEIRO DE TESTE
+Candidato experimental. Não representa aprovação do portal QGIS.
 
-ROTEIRO NO QGIS DO AUTOR
-1. Abra uma cópia do projeto e mantenha a versão antiga do complemento desativada.
-2. Confira SRCs e unidades do projeto, MDS, MDT e RGB. Mantenha um SRC local em metros.
-3. Gere um conglomerado: confira 100 pontos, os estados e a informação do SRC.
-4. Escolha 3 pontos e confira manualmente a janela e a leitura de MDS/MDT na
-   mesma localização. Compare com elevações conhecidas; não apenas com a versão antiga.
-5. Exporte CSV e confira alturas e campos crs_trabalho, crs_mds, crs_mdt e metodo_altura.
-6. Teste um ponto NoData e rasters com SRCs distintos. Falha de transformação deve
-   interromper a geração, sem deixar novos registros parciais.
-7. Mude o SRC do projeto com camadas de saída já existentes: o plugin deve pedir
-   outro conjunto ou o retorno ao SRC original, sem relabelar as camadas antigas.
-8. Classifique uma imagem com seu .pth existente e confira classe/probabilidades
-   para a mesma entrada. O limiar 0,60 e a ordem das três classes foram preservados.
-9. Feche/reabra o complemento; confira remoção dos ícones ao desativá-lo.
+1. PRESERVAR O AMBIENTE DE TRABALHO
+Salve o projeto e as camadas temporárias que quiser conservar em GeoPackage.
+Guarde o ZIP da RC3. Para testar o plugin sem substituir sua cópia de trabalho,
+use um perfil de usuário separado do QGIS, por exemplo Fazenda_RC4.
+Instale o ZIP fazenda_classifier_1.1.0-rc4.zip nesse perfil e reinicie o QGIS.
+Abra uma cópia do projeto com seus rasters. Confira a versão nos complementos.
 
-PUBLICAÇÃO
-- O código está em github.com/leonardoheraki/fazenda-classifier. Homepage,
-  repository e tracker estão preenchidos no metadata.txt. A fonte publicada
-  deve corresponder à fonte incluída no ZIP.
-- Manter a licença GPL-2.0-or-later do código e respeitar os direitos dos recursos externos.
-- Disponibilizar os pesos e sua licença em um canal separado se a classificação
-  pré-treinada for oferecida ao público. Os pesos não cabem no pacote de 25 MB.
-- A RC2 passou as oito verificações de integração no QGIS do autor em 02/11/2026.
-  Os testes de campo de espécies e alturas devem ser documentados separadamente.
-- Após instalar a RC3 e reiniciar o QGIS, repita os oito testes de integração
-  do Console Python e confira geração, reclassificação e exportação.
-- No portal QGIS, abra Fazenda Classifier e use Add version para enviar
-  fazenda_classifier_1.1.0-rc3.zip. O pacote precisa conter uma única pasta
-  raiz fazenda_classifier/. O arquivo de fontes baixado do GitHub tem outra estrutura.
-- Confira os resultados em Versions > 1.1.0-rc3 > Security Scan. Cada nova versão
-  passa por nova análise; a aprovação final depende dos mantenedores do portal.
-- A conta do autor no portal está vinculada ao GitHub e o e-mail foi confirmado.
+Um perfil novo não separa o Python da instalação. A RC4 não instala nem atualiza
+PyTorch, torchvision, Pillow, NumPy ou outras bibliotecas. Para comparar versões
+do PyTorch, use uma segunda instalação independente do QGIS com seu próprio
+Python e perfil. Preserve a instalação principal até concluir a comparação.
 
-ANÁLISE LOCAL DA RC3
-O Bandit 1.9.4 reproduziu 14 ocorrências da RC2 (B101: 12; B102: 1; B112: 1).
-Esses trechos foram corrigidos sem desativar regras ou retirar testes do pacote.
-Os 31 testes de lógica e estado passaram em Python normal e com python -O.
-O Bandit não apresentou ocorrências no código da RC3. O resultado da nova
-análise no portal e a repetição dos testes reais no QGIS ainda precisam ser registrados.
+2. INTEGRAÇÃO SEM EXECUTAR A CNN
+No Console Python do QGIS:
 
-FONTES OFICIAIS CONSULTADAS EM 02/11/2026
-https://plugins.qgis.org/docs/publish
-https://plugins.qgis.org/docs/approval
-https://docs.qgis.org/3.40/en/docs/pyqgis_developer_cookbook/plugins/releasing.html
-https://plugins.qgis.org/docs/security-scanning/tools
-https://plugins.qgis.org/docs/security-scanning/troubleshooting
+    from fazenda_classifier.tests.smoke_rc4 import run
+    run()
 
-ESTRUTURA E COMPATIBILIDADE
-ZIP com uma pasta raiz fazenda_classifier; metadados com descrição em inglês,
-versão nova, author/email, ícone e indicação de dependências. LICENSE presente.
-Sem .pth, bibliotecas compiladas, caches ou caminhos do computador do autor.
-Faixa declarada de candidatura: QGIS >= 3.36 e < 4.0, experimental=True.
-Isso é uma faixa proposta, não uma certificação de testes em todas as versões.
-Os URLs dos metadados apontam para o repositório público do projeto.
+Esperado: 12 verificações concluídas. As oito verificações anteriores usam rasters
+sintéticos e as quatro novas usam um projeto QGIS isolado e checagens de proteção.
+Não alteram as camadas do projeto aberto nem carregam pesos treinados.
+Não confunda esse resultado com uma classificação real bem-sucedida.
 
-A aprovação no repositório QGIS depende da avaliação de seus mantenedores.
+3. MEDIDAS E PROTEÇÃO DAS CAMADAS
+Escolha MDS, MDT e RGB. Confirme um SRC projetado em metros, adequado à área.
+Gere um NOVO conglomerado na RC4 e confira 100 pontos de altura, SRCs e estados.
+As camadas anteriores e camadas importadas de mesmo nome não são adotadas pela
+RC4 para escrita. Elas podem aparecer na legenda junto às novas; use a visibilidade
+para comparar. O plugin escolhe suas saídas por identificação própria, não pelo nome.
+Teste também uma árvore: ponto dentro da copa, polígono sem cruzamentos, altura,
+área, maior distância entre vértices e exportação CSV com estado da classificação.
+Compare três alturas com leituras MDS/MDT na mesma posição física.
 
-ROTEIRO PARA REPRODUZIR OS TESTES DA RC2
-Escolher rasters nos combos; manter uma camada de pontos ativa; Selecionar árvore;
-aguardar classe/confiança; delimitar pelo menos três vértices em torno do ponto;
-finalizar; exportar CSV. Conferir área, diâmetro, altura, status e SRCs.
-Selecionar outra árvore e confirmar limpeza da copa e resultados anteriores.
-Cancelar o modelo em um perfil sem configuração: exportar medidas deve registrar
-nao_executada, com classe e probabilidades vazias, sem Desconhecida como espécie.
-Um polígono com dois pontos ou cruzamentos não pode ser finalizado.
-Reclassificar CG_001 e confirmar 625 registros e crs_rgb preenchido no CSV.
-No console QGIS, smoke_qgis.run() concluiu 8 verificações na RC2 do autor.
-A validação biológica exige árvores identificadas e medidas de referência.
+4. BLOQUEIO ESPERADO NO PYTORCH 2.5.0
+Com a versão atual 2.5.0+cpu, tentar classificar deve informar o requisito mínimo
+estável 2.10.0 antes de abrir o modelo. Esse bloqueio é uma proteção intencional.
+Parcelas, alturas e copas continuam disponíveis. Não use pesos de terceiros para
+testar uma versão vulnerável; use apenas o modelo de procedência confiável.
+Para conferir o diagnóstico sem gerar um conglomerado:
+
+    from fazenda_classifier.tests.smoke_model import run
+    run()
+
+Na 2.5.0, esperado: status bloqueada; nenhum peso é aberto.
+
+5. CNN REAL NO AMBIENTE SEPARADO
+Somente depois de preparar a segunda instalação com PyTorch e torchvision
+compatíveis. Par CPU de referência: torch 2.10.0 / torchvision 0.25.0.
+Execute o mesmo smoke_model.run(); escolha seu modelo e pequenos recortes RGB
+PNG/JPEG que já tenham classificação de referência. O roteiro não modifica os
+arquivos. Confira classe, três probabilidades, confiança, limiar e status.
+Compare com os mesmos recortes da RC3. Documente versões e diferenças;
+probabilidades idênticas entre versões não são garantidas.
+
+6. RECLASSIFICAÇÃO REAL DO CONGLOMERADO
+Gere um conglomerado RC4. Classifique e confira 625 amostras para o quadrado de
+100 x 100 m, sem erros. Reclassifique a mesma UA e confira novamente 625 amostras,
+sem dobrar a contagem. Se houver outra UA, suas amostras devem ser preservadas.
+Exporte o CSV e confira coordenadas, probabilidades e crs_trabalho/crs_rgb.
+Uma falha de recorte, inferência ou gravação deve interromper a tentativa antes
+de substituir os resultados anteriores. A RC4 publica somente a execução completa.
+Finalize qualquer sessão de edição manual da saída de espécies antes de reclassificar.
+
+7. PRIVACIDADE E ARQUIVOS
+Cada tentativa usa uma pasta temporária aleatória. A UA não forma caminhos.
+A RC4 não apaga pastas de tentativas anteriores, inclusive após falhas. Recortes
+podem permanecer no disco; salve os que precisar e faça a limpeza manual dos
+arquivos que reconhecer como seus. CSVs registram coordenadas e caminhos locais.
+Permissões e sincronização de pastas controlam o acesso de terceiros aos arquivos.
+O ZIP não inclui pesos, rasters de campo, dados de inventário ou dependências.
+
+8. ANTES DE ENVIAR AO PORTAL
+Conclua os testes nativos e registre a saída em docs/VALIDACAO.md.
+Mantenha o código-fonte do repositório correspondente ao ZIP enviado.
+Envie como nova versão; a aprovação automática de uma versão anterior não
+certifica a RC4 nem substitui a revisão manual do portal.
+Esta versão gera medidas e exportações para estudos externos de carbono
+florestal, AGC e clima. Ela não estima AGC nem executa projeções climáticas.

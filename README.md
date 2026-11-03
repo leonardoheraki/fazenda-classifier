@@ -2,9 +2,11 @@
 
 QGIS plugin for forest sampling, canopy-height measurements from DSM/DTM rasters,
 manual crown measurements, and optional RGB patch classification with a
-user-supplied Fazenda LeNet model.
+user-supplied Fazenda LeNet model. Measurements and exports support external
+forest carbon, aboveground carbon (AGC), and climate studies; the plugin does
+not calculate AGC or run climate projections.
 
-**Author:** Leonardo Heraki. **Version:** 1.1.0-rc3, experimental.
+**Author:** Leonardo Heraki. **Version:** 1.1.0-rc4, experimental.
 Proposed compatibility range: QGIS 3.36 to 3.x. QGIS 4 has not been validated.
 
 ## Funcionalidades
@@ -30,17 +32,33 @@ com o comando abaixo ou use um pacote disponibilizado nas versões do projeto.
 python scripts/build_plugin.py
 ```
 
-A saída fica em `dist/fazenda_classifier_1.1.0-rc3.zip`.
+A saída fica em `dist/fazenda_classifier_1.1.0-rc4.zip`.
 Reinicie o QGIS depois de substituir uma versão já carregada.
 Salve camadas temporárias como GeoPackage se quiser preservá-las.
+A RC4 cria seu próprio conjunto de camadas de memória. Camadas de versões
+anteriores, camadas importadas e arquivos com os mesmos nomes não são adotados
+para gravação nem exportados como novas saídas da RC4. Gere um novo conglomerado
+para testar esta versão. As camadas anteriores podem continuar no projeto.
+Use um perfil de teste separado para preservar a instalação do complemento usada
+no trabalho. O perfil, sozinho, não isola as bibliotecas Python compartilhadas.
 
 ## Dependências e modelo
 
 Parcelas, alturas e medidas de copa usam QGIS e NumPy. Para a classificação,
-instale PyTorch ≥ 2.2, torchvision compatível e Pillow no Python utilizado pelo
+instale PyTorch estável ≥ 2.10.0, torchvision compatível e Pillow no Python utilizado pelo
 QGIS. Consulte o [seletor oficial do PyTorch](https://pytorch.org/get-started/locally/)
 para escolher a combinação compatível com seu Python e sistema operacional.
 O complemento não instala dependências automaticamente.
+A RC4 bloqueia a CNN antes de abrir pesos se encontrar PyTorch anterior a 2.10.0,
+uma versão de prévia ou uma versão que não consiga identificar. Parcelas, alturas
+e copas continuam disponíveis sem a CNN. A restrição segue o aviso
+[GHSA-63cw-57p8-fm3p](https://github.com/pytorch/pytorch/security/advisories/GHSA-63cw-57p8-fm3p).
+
+O par PyTorch 2.10.0 / torchvision 0.25.0 para CPU é uma combinação oficialmente
+publicada, ainda não validada com os pesos do autor neste ambiente. Teste em uma
+segunda instalação do QGIS com Python e perfil próprios antes de alterar o ambiente
+de trabalho. Compare as classes e probabilidades dos mesmos recortes; resultados
+numericamente idênticos entre versões não são garantidos.
 
 Os pesos `.pth` não estão incluídos neste repositório. Na primeira classificação,
 selecione seu modelo Fazenda LeNet compatível; o caminho fica nas configurações
@@ -71,35 +89,51 @@ A transformação horizontal não corrige diferenças de datum vertical.
 - O conglomerado de 1 ha não reproduz a geometria de parcelas da FLONA ou do IFN.
 - Esta versão não executa a equação de carbono do artigo CMIP6.
 - Patches são arquivos temporários locais; copie os PNGs se quiser preservá-los.
+  Cada execução usa uma pasta aleatória independente da UA. Nenhuma pasta de uma
+  execução anterior é apagada automaticamente, incluindo tentativas interrompidas.
+- Uma reclassificação com falha em qualquer amostra não substitui a saída anterior.
+  Os resultados novos são preparados em memória e publicados após a gravação completa.
+- CSVs incluem coordenadas e caminhos locais de patches. Pastas compartilhadas ou
+  sincronizadas podem disponibilizar esses arquivos conforme suas permissões de acesso.
 
 ## Testes
 
-Os 31 testes de lógica e estado usam a biblioteca padrão do Python:
+Os 52 testes automatizados usam adaptadores isolados de QGIS/Qt e uma CNN simulada
+nos testes de fluxo. Eles cobrem as regras numéricas, o bloqueio antes de carregar
+pesos, camadas persistentes com nomes iguais, gravação parcial, falhas de troca de
+camadas e duas classificações simuladas de 625 amostras sem acumular duplicatas.
+Não executam QGIS ou PyTorch reais.
 
 ```bash
 python -m unittest discover -s fazenda_classifier/tests -p "test_*.py" -v
+python -O -m unittest discover -s fazenda_classifier/tests -p "test_*.py" -v
 ```
 
-Na RC3, os 31 testes também passaram com `python -O`. Os testes importam o
-módulo real da interface com adaptadores isolados, sem compilar ou executar
-trechos de código gerados. As verificações de integração usam `unittest` e
-continuam ativas com otimização. A limpeza dos resultados de uma UA agora
-valida o campo obrigatório e interrompe a reclassificação se a exclusão falhar.
-
-No Console Python do QGIS, execute os oito testes de integração:
+No Console Python do QGIS, execute as 12 verificações de integração da RC4:
 
 ```python
-from fazenda_classifier.tests.smoke_qgis import run
+from fazenda_classifier.tests.smoke_rc4 import run
 run()
 ```
 
-O teste de integração usa rasters sintéticos temporários e não modifica as
-camadas do projeto. O autor relatou os oito testes concluídos em seu QGIS em
-02/11/2026. Consulte [o registro de validação](docs/VALIDACAO.md) para o escopo
-dos testes reais e suas limitações. Após informar a instalação da RC3, o autor
-forneceu nova captura do Console Python com as oito verificações concluídas.
-A reclassificação do mesmo conglomerado sem duplicar amostras ainda precisa
-ser conferida na interface real.
+O roteiro inclui os oito testes anteriores de rasters/copa e quatro verificações
+adicionais. Usa rasters sintéticos temporários e um projeto QGIS isolado; não
+modifica as camadas do projeto aberto e não executa a CNN real.
+
+Para testar a CNN real com seu modelo e pequenos recortes PNG/JPEG:
+
+```python
+from fazenda_classifier.tests.smoke_model import run
+run()
+```
+
+Com PyTorch 2.5.0, o retorno esperado é `status: bloqueada`, antes de escolher ou
+abrir o modelo. Com a versão suportada, o roteiro permite selecionar seus pesos
+e recortes, verifica probabilidades e informa as classes. Não certifica acurácia
+botânica nem equivalência com o ambiente anterior. Veja o
+[roteiro de teste](fazenda_classifier/TESTE_E_PUBLICACAO.txt) e o
+[registro de validação](docs/VALIDACAO.md). A execução nativa desses roteiros da
+RC4 no QGIS do autor ainda está pendente.
 
 ## Verificação de segurança da RC3
 
@@ -127,5 +161,6 @@ Código-fonte: https://github.com/leonardoheraki/fazenda-classifier
 Registro de problemas: https://github.com/leonardoheraki/fazenda-classifier/issues
 
 Os metadados do complemento apontam para esses endereços. A RC2 foi submetida ao
-portal QGIS e bloqueada na análise automática do Bandit. A RC3 foi preparada
-para novo envio; sua aprovação depende da análise do portal e de seus mantenedores.
+portal QGIS e bloqueada na análise automática do Bandit. O autor apresentou
+a captura de aprovação da análise automática da versão então enviada. A RC4 é um
+novo candidato para teste; sua validação e aprovação no portal são etapas próprias.

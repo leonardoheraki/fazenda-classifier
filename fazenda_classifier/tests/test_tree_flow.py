@@ -81,47 +81,6 @@ def window_class(project):
     return plugin.MainWindow
 
 
-class SpeciesFeature:
-    def __init__(self, feature_id, ua_id):
-        self.feature_id, self.ua_id = feature_id, ua_id
-
-    def id(self):
-        return self.feature_id
-
-    def __getitem__(self, name):
-        if name != "UA":
-            raise KeyError(name)
-        return self.ua_id
-
-
-class SpeciesLayer:
-    def __init__(self, *, has_ua=True, can_delete=True):
-        self.has_ua, self.can_delete = has_ua, can_delete
-        self.features = [SpeciesFeature(1, "CG_001"), SpeciesFeature(2, "CG_002"),
-                         SpeciesFeature(3, "CG_001")]
-        self.delete_calls = []
-
-    def fields(self):
-        return types.SimpleNamespace(indexFromName=lambda name: 0 if self.has_ua else -1)
-
-    def getFeatures(self):
-        return iter(self.features)
-
-    def dataProvider(self):
-        return self
-
-    def deleteFeatures(self, ids):
-        self.delete_calls.append(list(ids))
-        if self.can_delete:
-            self.features = [f for f in self.features if f.id() not in ids]
-        return self.can_delete
-
-    def updateExtents(self):
-        return None
-
-    def triggerRepaint(self):
-        return None
-
 
 class WindowFlowTests(unittest.TestCase):
     def setUp(self):
@@ -223,24 +182,6 @@ class WindowFlowTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             w._require_tree_crs()
 
-    def test_reclassification_removes_only_the_selected_ua(self):
-        layer = SpeciesLayer()
-        self.assertEqual(self.window.clear_species_results_for_ua(layer, "CG_001"), 2)
-        self.assertEqual([feature.id() for feature in layer.features], [2])
-        self.assertEqual(layer.delete_calls, [[1, 3]])
-
-    def test_missing_ua_field_cannot_delete_existing_samples(self):
-        layer = SpeciesLayer(has_ua=False)
-        with self.assertRaisesRegex(ValueError, "campo obrigatório UA"):
-            self.window.clear_species_results_for_ua(layer, "CG_001")
-        self.assertEqual(len(layer.features), 3)
-        self.assertEqual(layer.delete_calls, [])
-
-    def test_failed_deletion_stops_reclassification(self):
-        layer = SpeciesLayer(can_delete=False)
-        with self.assertRaisesRegex(ValueError, "evitar duplicação"):
-            self.window.clear_species_results_for_ua(layer, "CG_001")
-        self.assertEqual(len(layer.features), 3)
 
 
 if __name__ == "__main__":

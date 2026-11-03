@@ -1,4 +1,4 @@
-FAZENDA CLASSIFIER 1.1.0-rc3 — CANDIDATO PARA TESTE NO QGIS 3.36–3.x
+FAZENDA CLASSIFIER 1.1.0-rc4 — CANDIDATO PARA TESTE NO QGIS 3.36–3.x
 
 Forest sampling tools for QGIS. Create metric plots, sample canopy height from
 DSM/DTM, and optionally classify RGB patches using a user-supplied LeNet model.
@@ -6,7 +6,7 @@ DSM/DTM, and optionally classify RGB patches using a user-supplied LeNet model.
 INSTALAÇÃO PARA TESTE
 1. Desative a versão antiga do Fazenda Classifier no gerenciador de complementos.
 2. Complementos > Gerenciar e Instalar Complementos > Instalar a partir de ZIP.
-3. Selecione fazenda_classifier_1.1.0-rc3.zip e ative Fazenda Classifier.
+3. Selecione fazenda_classifier_1.1.0-rc4.zip e ative Fazenda Classifier.
 4. O comando Classificar Imagem aparece no menu Raster e na barra de ferramentas.
 5. A instalação não precisa do arquivo .pth para gerar parcelas e alturas.
 
@@ -45,7 +45,7 @@ Salve as camadas temporárias como GeoPackage para preservá-las ao fechar o QGI
 
 DEPENDÊNCIAS E MODELO OPCIONAL
 Parcelas/alturas: NumPy e as bibliotecas fornecidas pelo QGIS.
-Classificação: torch >= 2.2, torchvision compatível e Pillow no Python do QGIS.
+Classificação: PyTorch estável >= 2.10.0, torchvision compatível e Pillow no Python do QGIS.
 Consulte o seletor oficial https://pytorch.org/get-started/locally/ para uma
 instalação compatível com seu Python/SO. O plugin não instala bibliotecas.
 Não instale outra cópia de PyQt em substituição à fornecida pelo QGIS.
@@ -69,8 +69,8 @@ A compatibilidade do plugin com o modelo CMIP6 não certifica a precisão local
 desse modelo ou sua transferência para outras áreas.
 
 TESTES
-O código compila e passou por 31 testes de coordenadas, pixels, NoData, medidas,
-estados de classificação, isolamento entre árvores e exportação CSV. Os testes
+A RC4 passou por 52 testes automatizados em Python normal e otimizado, incluindo
+coordenadas, pixels, NoData, medidas, estados, CSV e proteção das saídas. Os testes
 de interface usam adaptadores mínimos da API e não substituem o QGIS real.
 O ambiente de preparação não tem QGIS ou PyTorch: interface, PROJ real e
 classificação CNN não foram executados aqui.
@@ -133,3 +133,43 @@ Os 31 testes passaram em Python normal e otimizado. A análise local do Bandit
 não apresentou ocorrências; nenhuma regra foi desativada. Os testes continuam
 incluídos no pacote. O portal fará uma nova análise após o envio desta versão.
 Repita as oito verificações de integração no QGIS após instalar a RC3 e reiniciar.
+
+CORREÇÕES DA RC4 — PESOS, ARQUIVOS E PRESERVAÇÃO DOS RESULTADOS
+A CNN bloqueia versões do PyTorch anteriores a 2.10.0, prévias e versões não
+identificadas antes de importar torchvision ou abrir pesos. Não atualiza o Python
+nem instala dependências. Seu ambiente com PyTorch 2.5.0 pode testar parcelas,
+alturas e copas; o bloqueio da CNN nessa versão é esperado.
+Uma atualização de PyTorch deve ser validada em uma instalação independente do
+QGIS, com sua própria pasta Python e perfil de usuário. Apenas um novo perfil
+não separa as bibliotecas da instalação. Par de referência CPU: torch 2.10.0 e
+torchvision 0.25.0. Use pesos próprios ou de procedência confiável.
+
+A RC4 grava apenas em camadas de memória identificadas como suas saídas. Ela
+não adota camadas da RC3 nem arquivos de mesmo nome. Gere um novo conglomerado.
+Camadas antigas permanecem disponíveis para comparação, e as novas podem ter
+os mesmos nomes na legenda; o plugin usa sua própria identificação para escolhê-las.
+Cada classificação usa uma pasta aleatória de temporários; UA não compõe nomes
+de diretórios ou arquivos. Nenhuma pasta anterior é removida automaticamente.
+Recortes de tentativas com falha também podem permanecer; seus caminhos são
+informados para conferência e limpeza manual. CSVs podem revelar coordenadas e
+caminhos locais. Compartilhamento e sincronização seguem as permissões da pasta.
+
+A reclassificação é preparada em memória. Qualquer falha de recorte ou inferência
+interrompe a tentativa antes de substituir a camada anterior. Uma gravação parcial
+ou falha de registro da nova camada também interrompe a substituição. Amostras de
+outras UAs são copiadas para a saída nova. Finalize edições manuais antes de
+reclassificar. Classes, limiar 0,60, arquitetura, pesos, alturas e copas não foram
+reajustados. O plugin fornece dados para modelos externos de carbono florestal,
+AGC e climate studies; esta versão não calcula carbono nem projeções climáticas.
+
+Integração RC4 no Console Python do QGIS (12 verificações; sem CNN real):
+    from fazenda_classifier.tests.smoke_rc4 import run
+    run()
+
+Teste separado com seus pesos e pequenos recortes RGB:
+    from fazenda_classifier.tests.smoke_model import run
+    run()
+
+Os testes nativos da RC4 e a comparação de probabilidades com a versão anterior
+continuam pendentes até a execução no QGIS do autor. O resultado automático da
+RC3 no portal não se transfere automaticamente para a RC4.
