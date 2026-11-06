@@ -1,0 +1,30 @@
+# Python and local environments
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# Local editor and operating-system files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Build outputs and external model weights
+dist/
+*.zip
+*.pth
+*.pt
+*.onnx
+
+# Local data, projects and generated patches
+data/
+outputs/
+*.tif
+*.tiff
+*.gpkg
+*.qgz
+*.qgs
+.env
+.env.*

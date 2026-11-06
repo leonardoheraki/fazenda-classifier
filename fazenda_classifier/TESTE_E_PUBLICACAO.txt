@@ -1,0 +1,63 @@
+FAZENDA CLASSIFIER 1.1.0-rc8 — TESTE DOS CSVS PARA FAZENDA ECO
+
+1. CRIE UM PERFIL DE TESTE
+Guarde o ZIP da versão anterior e preserve seus projetos e camadas temporárias.
+Instale a RC8 em um novo perfil QGIS e reinicie. Perfis não isolam bibliotecas
+Python compartilhadas, mas esta revisão não exige alterar essas bibliotecas.
+Confira 1.1.0-rc8 na lista de complementos e no cabeçalho do painel.
+MDS, MDT e RGB ficam no topo. Percorra as três abas e confira a rolagem
+quando a janela estiver reduzida. As exportações ficam em suas respectivas abas.
+
+2. EXECUTE AS VERIFICAÇÕES NATIVAS
+No Console Python do QGIS:
+    from fazenda_classifier.tests.smoke_csv_eco import run
+    run()
+Esperado: 25 verificações, com rasters/camadas sintéticos e projeto isolado.
+O roteiro não usa pesos treinados nem modifica o projeto aberto do usuário.
+
+3. PARCELAS
+Na aba Parcela, gere uma parcela de teste com MDS/MDT conhecidos. Exporte pelo botão
+Exportar alturas CSV, perfil Fazenda ECO — Parcelas.
+Cada UA precisa de cinco alturas válidas. Os pontos inválidos permanecem
+identificados. Se a UA estiver incompleta, escolha Relatório completo dos
+pontos para diagnóstico; isso não habilita um H5 sem cinco alturas.
+No Fazenda ECO rev9 (porta local 5003), escolha Parcelas — Alturas e dados climáticos e envie o CSV.
+Confira a parcela de 100 m × 100 m e as 100 subparcelas de 1 m × 10 m.
+Confira H5, pontos usados, SRC e fontes de clima. H5 raster é experimental.
+
+4. ÁRVORE POR COPA
+Na aba Árvore individual, selecione a árvore, delimite a copa e aguarde a classificação, se executada.
+Confira o ID da árvore e a UA opcional; o ID automático é da seleção.
+Após Concluir copa, use Adicionar outra árvore. Meça ao menos três árvores,
+confira os IDs e as parcelas, clique em Finalizar lista e exporte um único
+CSV com três linhas. Confira também a remoção de uma linha, IDs duplicados
+e o cancelamento da gravação sem perder as demais árvores.
+Exporte no perfil Fazenda ECO — Árvore por copa e envie no modo Árvore por
+copa do app. Sem altura válida, a saída do app deve conter DAP e carbono
+vazio. Uma classificação rejeitada/não executada deve impedir esse perfil;
+as medidas e os estados continuam exportáveis no Relatório completo.
+Confira área em m², altura em m, máximo versus diâmetro equivalente e
+probabilidades em escala 0–1. Não interprete a grade RGB como copas individuais.
+
+5. INVENTÁRIO POR DAP NO APP
+Após Árvore por copa no Fazenda ECO, use o resultado_copa_DAP_AGC.csv como
+entrada de Inventário por DAP. Os DAPs preditos são importados do resultado;
+complete UA, área representada e tipologia se ausentes. O Classifier não
+calcula DAP e não fornece um inventário de DAP medido. Uma seleção de copas
+não representa automaticamente todas as árvores da parcela.
+
+6. REGISTRE A CONFERÊNCIA
+Registre versão do QGIS, perfil, arquivo exportado e resultado do app.
+Os testes observados em desenvolvimento usaram QGIS 3.40.6 em Linux e dados
+sintéticos. O autor confirmou o funcionamento da RC8 e dos CSVs no seu Windows/QGIS.
+Não se alteraram os cálculos de inferência, os pesos ou a amostragem.
+As equações de carbono/DAP do app não foram calibradas por esta alteração.
+Não existe botão de exportação de inventário medido no Classifier.
+O fluxo Inventário por DAP do painel do app usa a saída de Árvore por copa.
+
+7. RETORNO À VERSÃO ANTERIOR
+Feche o perfil de teste e retome o perfil de trabalho. Se tiver substituído
+uma instalação existente, reinstale o ZIP anterior guardado e reinicie o QGIS.
+Não apague os seus resultados ao trocar o pacote do complemento.
+Os arquivos CSV podem conter coordenadas e caminhos de patches; use os
+locais de compartilhamento apropriados para seus dados de pesquisa.

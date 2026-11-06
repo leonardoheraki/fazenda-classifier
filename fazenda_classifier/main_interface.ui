@@ -1,0 +1,1772 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>660</width>
+    <height>800</height>
+   </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>540</width>
+    <height>560</height>
+   </size>
+  </property>
+  <property name="windowTitle">
+   <string>Fazenda Classifier — Inventário florestal</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QVBoxLayout" name="verticalLayout">
+    <property name="leftMargin">
+     <number>18</number>
+    </property>
+    <property name="topMargin">
+     <number>18</number>
+    </property>
+    <property name="rightMargin">
+     <number>18</number>
+    </property>
+    <property name="bottomMargin">
+     <number>18</number>
+    </property>
+    <property name="spacing">
+     <number>12</number>
+    </property>
+    <item>
+     <widget class="QFrame" name="headerFrame">
+      <layout class="QHBoxLayout" name="headerLayout" stretch="0,1,0">
+       <property name="leftMargin">
+        <number>0</number>
+       </property>
+       <property name="topMargin">
+        <number>0</number>
+       </property>
+       <property name="rightMargin">
+        <number>0</number>
+       </property>
+       <property name="bottomMargin">
+        <number>0</number>
+       </property>
+       <property name="spacing">
+        <number>12</number>
+       </property>
+       <item>
+        <widget class="QLabel" name="brandIcon">
+         <property name="textFormat">
+          <enum>Qt::PlainText</enum>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>44</width>
+           <height>44</height>
+          </size>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>44</width>
+           <height>44</height>
+          </size>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <layout class="QVBoxLayout" name="brandLayout">
+         <property name="leftMargin">
+          <number>0</number>
+         </property>
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <property name="rightMargin">
+          <number>0</number>
+         </property>
+         <property name="bottomMargin">
+          <number>0</number>
+         </property>
+         <property name="spacing">
+          <number>3</number>
+         </property>
+         <item>
+          <widget class="QLabel" name="titleLabel">
+           <property name="text">
+            <string>Fazenda Classifier</string>
+           </property>
+           <property name="role" stdset="0">
+            <string>brandTitle</string>
+           </property>
+           <property name="textFormat">
+            <enum>Qt::PlainText</enum>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="subtitleLabel">
+           <property name="text">
+            <string>Medições e classificação no QGIS</string>
+           </property>
+           <property name="role" stdset="0">
+            <string>subtitle</string>
+           </property>
+           <property name="textFormat">
+            <enum>Qt::PlainText</enum>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <widget class="QLabel" name="versionBadge">
+         <property name="text">
+          <string>1.1.0-rc8</string>
+         </property>
+         <property name="role" stdset="0">
+          <string>badge</string>
+         </property>
+         <property name="textFormat">
+          <enum>Qt::PlainText</enum>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignCenter</set>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>116</width>
+           <height>28</height>
+          </size>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item>
+     <widget class="QFrame" name="rasterCard">
+      <property name="role" stdset="0">
+       <string>card</string>
+      </property>
+      <layout class="QVBoxLayout" name="rasterCardLayout">
+       <property name="leftMargin">
+        <number>12</number>
+       </property>
+       <property name="topMargin">
+        <number>12</number>
+       </property>
+       <property name="rightMargin">
+        <number>12</number>
+       </property>
+       <property name="bottomMargin">
+        <number>12</number>
+       </property>
+       <property name="spacing">
+        <number>8</number>
+       </property>
+       <item>
+        <layout class="QHBoxLayout" name="rasterHeading" stretch="1,0">
+         <property name="leftMargin">
+          <number>0</number>
+         </property>
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <property name="rightMargin">
+          <number>0</number>
+         </property>
+         <property name="bottomMargin">
+          <number>0</number>
+         </property>
+         <property name="spacing">
+          <number>8</number>
+         </property>
+         <item>
+          <widget class="QLabel" name="rastersTitle">
+           <property name="text">
+            <string>Rasters do projeto</string>
+           </property>
+           <property name="role" stdset="0">
+            <string>sectionTitle</string>
+           </property>
+           <property name="textFormat">
+            <enum>Qt::PlainText</enum>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="refreshRasterButton">
+           <property name="text">
+            <string>Atualizar camadas</string>
+           </property>
+           <property name="role" stdset="0">
+            <string>secondary</string>
+           </property>
+           <property name="cursor">
+            <cursorShape>PointingHandCursor</cursorShape>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>34</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>160</width>
+             <height>32</height>
+            </size>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>28</height>
+            </size>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <layout class="QGridLayout" name="rasterGrid">
+         <property name="leftMargin">
+          <number>0</number>
+         </property>
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <property name="rightMargin">
+          <number>0</number>
+         </property>
+         <property name="bottomMargin">
+          <number>0</number>
+         </property>
+         <property name="spacing">
+          <number>6</number>
+         </property>
+         <item row="0" column="0">
+          <widget class="QLabel" name="mdsLabel">
+           <property name="text">
+            <string>MDS · superfície</string>
+           </property>
+           <property name="role" stdset="0">
+            <string>fieldCaption</string>
+           </property>
+           <property name="textFormat">
+            <enum>Qt::PlainText</enum>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="QLabel" name="mdtLabel">
+           <property name="text">
+            <string>MDT · terreno</string>
+           </property>
+           <property name="role" stdset="0">
+            <string>fieldCaption</string>
+           </property>
+           <property name="textFormat">
+            <enum>Qt::PlainText</enum>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="0">
+          <widget class="QComboBox" name="mdsComboBox">
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>30</height>
+            </size>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <widget class="QComboBox" name="mdtComboBox">
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>30</height>
+            </size>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="0" colspan="2">
+          <widget class="QLabel" name="orthoLabel">
+           <property name="text">
+            <string>Ortofoto RGB</string>
+           </property>
+           <property name="role" stdset="0">
+            <string>fieldCaption</string>
+           </property>
+           <property name="textFormat">
+            <enum>Qt::PlainText</enum>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="0" colspan="2">
+          <widget class="QComboBox" name="orthoComboBox">
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>30</height>
+            </size>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item>
+     <widget class="QTabWidget" name="workflowTabs">
+      <property name="documentMode">
+       <bool>true</bool>
+      </property>
+      <property name="usesScrollButtons">
+       <bool>true</bool>
+      </property>
+      <widget class="QWidget" name="treePage">
+       <attribute name="title">
+        <string>Árvore individual</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="treePageOuter">
+        <property name="leftMargin">
+         <number>0</number>
+        </property>
+        <property name="topMargin">
+         <number>0</number>
+        </property>
+        <property name="rightMargin">
+         <number>0</number>
+        </property>
+        <property name="bottomMargin">
+         <number>0</number>
+        </property>
+        <property name="spacing">
+         <number>0</number>
+        </property>
+        <item>
+         <widget class="QScrollArea" name="controlsScrollArea">
+          <property name="widgetResizable">
+           <bool>true</bool>
+          </property>
+          <property name="frameShape">
+           <enum>QFrame::NoFrame</enum>
+          </property>
+          <property name="horizontalScrollBarPolicy">
+           <enum>Qt::ScrollBarAlwaysOff</enum>
+          </property>
+          <widget class="QWidget" name="treePageContent">
+           <layout class="QVBoxLayout" name="treePageLayout">
+            <property name="leftMargin">
+             <number>14</number>
+            </property>
+            <property name="topMargin">
+             <number>14</number>
+            </property>
+            <property name="rightMargin">
+             <number>14</number>
+            </property>
+            <property name="bottomMargin">
+             <number>14</number>
+            </property>
+            <property name="spacing">
+             <number>10</number>
+            </property>
+            <item>
+             <widget class="QLabel" name="treeSectionLabel">
+              <property name="text">
+               <string>Seleção e copa</string>
+              </property>
+              <property name="role" stdset="0">
+               <string>sectionTitle</string>
+              </property>
+              <property name="textFormat">
+               <enum>Qt::PlainText</enum>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="treeHelp">
+              <property name="text">
+               <string>Marque o ponto da árvore e delimite o contorno da copa.</string>
+              </property>
+              <property name="role" stdset="0">
+               <string>muted</string>
+              </property>
+              <property name="textFormat">
+               <enum>Qt::PlainText</enum>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <layout class="QHBoxLayout" name="treeActionsLayout" stretch="1,1,1">
+              <property name="leftMargin">
+               <number>0</number>
+              </property>
+              <property name="topMargin">
+               <number>0</number>
+              </property>
+              <property name="rightMargin">
+               <number>0</number>
+              </property>
+              <property name="bottomMargin">
+               <number>0</number>
+              </property>
+              <property name="spacing">
+               <number>8</number>
+              </property>
+              <item>
+               <widget class="QPushButton" name="selectAreaButton">
+                <property name="text">
+                 <string>Selecionar árvore</string>
+                </property>
+                <property name="role" stdset="0">
+                 <string>primary</string>
+                </property>
+                <property name="cursor">
+                 <cursorShape>PointingHandCursor</cursorShape>
+                </property>
+                <property name="minimumSize">
+                 <size>
+                  <width>0</width>
+                  <height>34</height>
+                 </size>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QPushButton" name="delimitTreeButton">
+                <property name="text">
+                 <string>Delimitar copa</string>
+                </property>
+                <property name="role" stdset="0">
+                 <string>secondary</string>
+                </property>
+                <property name="cursor">
+                 <cursorShape>PointingHandCursor</cursorShape>
+                </property>
+                <property name="minimumSize">
+                 <size>
+                  <width>0</width>
+                  <height>34</height>
+                 </size>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QPushButton" name="finishDelimitationButton">
+                <property name="text">
+                 <string>Concluir copa</string>
+                </property>
+                <property name="role" stdset="0">
+                 <string>secondary</string>
+                </property>
+                <property name="cursor">
+                 <cursorShape>PointingHandCursor</cursorShape>
+                </property>
+                <property name="minimumSize">
+                 <size>
+                  <width>0</width>
+                  <height>34</height>
+                 </size>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <layout class="QHBoxLayout" name="metricsLayout" stretch="1,1,1">
+              <property name="leftMargin">
+               <number>0</number>
+              </property>
+              <property name="topMargin">
+               <number>0</number>
+              </property>
+              <property name="rightMargin">
+               <number>0</number>
+              </property>
+              <property name="bottomMargin">
+               <number>0</number>
+              </property>
+              <property name="spacing">
+               <number>8</number>
+              </property>
+              <item>
+               <widget class="QFrame" name="heightCard">
+                <property name="role" stdset="0">
+                 <string>metric</string>
+                </property>
+                <layout class="QVBoxLayout" name="heightLayout">
+                 <property name="leftMargin">
+                  <number>12</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>12</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>12</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>12</number>
+                 </property>
+                 <property name="spacing">
+                  <number>5</number>
+                 </property>
+                 <item>
+                  <widget class="QLabel" name="heightCaption">
+                   <property name="text">
+                    <string>ALTURA</string>
+                   </property>
+                   <property name="role" stdset="0">
+                    <string>metricCaption</string>
+                   </property>
+                   <property name="textFormat">
+                    <enum>Qt::PlainText</enum>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="heightLabel">
+                   <property name="text">
+                    <string>—</string>
+                   </property>
+                   <property name="role" stdset="0">
+                    <string>metricValue</string>
+                   </property>
+                   <property name="textFormat">
+                    <enum>Qt::PlainText</enum>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item>
+               <widget class="QFrame" name="crownAreaCard">
+                <property name="role" stdset="0">
+                 <string>metric</string>
+                </property>
+                <layout class="QVBoxLayout" name="crownAreaLayout">
+                 <property name="leftMargin">
+                  <number>12</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>12</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>12</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>12</number>
+                 </property>
+                 <property name="spacing">
+                  <number>5</number>
+                 </property>
+                 <item>
+                  <widget class="QLabel" name="crownAreaCaption">
+                   <property name="text">
+                    <string>ÁREA DE COPA</string>
+                   </property>
+                   <property name="role" stdset="0">
+                    <string>metricCaption</string>
+                   </property>
+                   <property name="textFormat">
+                    <enum>Qt::PlainText</enum>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="crownAreaLabel">
+                   <property name="text">
+                    <string>—</string>
+                   </property>
+                   <property name="role" stdset="0">
+                    <string>metricValue</string>
+                   </property>
+                   <property name="textFormat">
+                    <enum>Qt::PlainText</enum>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item>
+               <widget class="QFrame" name="crownDiameterCard">
+                <property name="role" stdset="0">
+                 <string>metric</string>
+                </property>
+                <layout class="QVBoxLayout" name="crownDiameterLayout">
+                 <property name="leftMargin">
+                  <number>12</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>12</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>12</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>12</number>
+                 </property>
+                 <property name="spacing">
+                  <number>5</number>
+                 </property>
+                 <item>
+                  <widget class="QLabel" name="crownDiameterCaption">
+                   <property name="text">
+                    <string>DIÂMETRO MÁXIMO</string>
+                   </property>
+                   <property name="role" stdset="0">
+                    <string>metricCaption</string>
+                   </property>
+                   <property name="textFormat">
+                    <enum>Qt::PlainText</enum>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="crownDiameterLabel">
+                   <property name="text">
+                    <string>—</string>
+                   </property>
+                   <property name="role" stdset="0">
+                    <string>metricValue</string>
+                   </property>
+                   <property name="textFormat">
+                    <enum>Qt::PlainText</enum>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <widget class="QFrame" name="treeClassificationCard">
+              <property name="role" stdset="0">
+               <string>status</string>
+              </property>
+              <layout class="QVBoxLayout" name="treeClassificationCardLayout">
+               <property name="leftMargin">
+                <number>12</number>
+               </property>
+               <property name="topMargin">
+                <number>12</number>
+               </property>
+               <property name="rightMargin">
+                <number>12</number>
+               </property>
+               <property name="bottomMargin">
+                <number>12</number>
+               </property>
+               <property name="spacing">
+                <number>4</number>
+               </property>
+               <item>
+                <widget class="QLabel" name="classificationTitle">
+                 <property name="text">
+                  <string>CLASSIFICAÇÃO DA ÁRVORE</string>
+                 </property>
+                 <property name="role" stdset="0">
+                  <string>fieldCaption</string>
+                 </property>
+                 <property name="textFormat">
+                  <enum>Qt::PlainText</enum>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QLabel" name="resultLabel">
+                 <property name="text">
+                  <string>Classificação: não executada</string>
+                 </property>
+                 <property name="role" stdset="0">
+                  <string>result</string>
+                 </property>
+                 <property name="textFormat">
+                  <enum>Qt::PlainText</enum>
+                 </property>
+                 <property name="wordWrap">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item>
+             <layout class="QGridLayout" name="treeIdentityLayout">
+              <property name="leftMargin">
+               <number>0</number>
+              </property>
+              <property name="topMargin">
+               <number>0</number>
+              </property>
+              <property name="rightMargin">
+               <number>0</number>
+              </property>
+              <property name="bottomMargin">
+               <number>0</number>
+              </property>
+              <property name="spacing">
+               <number>6</number>
+              </property>
+              <item row="0" column="0">
+               <widget class="QLabel" name="treeIdCaption">
+                <property name="text">
+                 <string>Identificador da árvore</string>
+                </property>
+                <property name="role" stdset="0">
+                 <string>fieldCaption</string>
+                </property>
+                <property name="textFormat">
+                 <enum>Qt::PlainText</enum>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="1">
+               <widget class="QLabel" name="treeUaCaption">
+                <property name="text">
+                 <string>UA / parcela (opcional)</string>
+                </property>
+                <property name="role" stdset="0">
+                 <string>fieldCaption</string>
+                </property>
+                <property name="textFormat">
+                 <enum>Qt::PlainText</enum>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="0">
+               <widget class="QLineEdit" name="treeIdLineEdit">
+                <property name="placeholderText">
+                 <string>Gerado ao selecionar a árvore</string>
+                </property>
+                <property name="toolTip">
+                 <string>Substitua pelo código de campo para relacionar a copa com as medições da árvore.</string>
+                </property>
+                <property name="minimumSize">
+                 <size>
+                  <width>0</width>
+                  <height>32</height>
+                 </size>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="1">
+               <widget class="QLineEdit" name="treeUaLineEdit">
+                <property name="placeholderText">
+                 <string>Ex.: CG_001</string>
+                </property>
+                <property name="toolTip">
+                 <string>Informe a parcela da árvore; ela não é atribuída pela última parcela gerada.</string>
+                </property>
+                <property name="minimumSize">
+                 <size>
+                  <width>0</width>
+                  <height>32</height>
+                 </size>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <widget class="QFrame" name="treeBatchCard">
+              <property name="role" stdset="0">
+               <string>note</string>
+              </property>
+              <layout class="QVBoxLayout" name="treeBatchLayout">
+               <property name="leftMargin">
+                <number>12</number>
+               </property>
+               <property name="topMargin">
+                <number>12</number>
+               </property>
+               <property name="rightMargin">
+                <number>12</number>
+               </property>
+               <property name="bottomMargin">
+                <number>12</number>
+               </property>
+               <property name="spacing">
+                <number>8</number>
+               </property>
+               <item>
+                <widget class="QFrame" name="treeDecisionFrame">
+                 <layout class="QHBoxLayout" name="treeDecisionLayout" stretch="1,1">
+                  <property name="leftMargin">
+                   <number>0</number>
+                  </property>
+                  <property name="topMargin">
+                   <number>0</number>
+                  </property>
+                  <property name="rightMargin">
+                   <number>0</number>
+                  </property>
+                  <property name="bottomMargin">
+                   <number>0</number>
+                  </property>
+                  <property name="spacing">
+                   <number>8</number>
+                  </property>
+                  <item>
+                   <widget class="QPushButton" name="addTreeButton">
+                    <property name="text">
+                     <string>Adicionar outra árvore</string>
+                    </property>
+                    <property name="role" stdset="0">
+                     <string>primary</string>
+                    </property>
+                    <property name="minimumSize">
+                     <size>
+                      <width>0</width>
+                      <height>32</height>
+                     </size>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QPushButton" name="finalizeTreesButton">
+                    <property name="text">
+                     <string>Finalizar lista</string>
+                    </property>
+                    <property name="role" stdset="0">
+                     <string>secondary</string>
+                    </property>
+                    <property name="minimumSize">
+                     <size>
+                      <width>0</width>
+                      <height>32</height>
+                     </size>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </widget>
+               </item>
+               <item>
+                <widget class="QLabel" name="treeBatchHelpLabel">
+                 <property name="text">
+                  <string>Escolha como continuar depois de concluir a copa.</string>
+                 </property>
+                 <property name="role" stdset="0">
+                  <string>muted</string>
+                 </property>
+                 <property name="textFormat">
+                  <enum>Qt::PlainText</enum>
+                 </property>
+                 <property name="wordWrap">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QFrame" name="treeListHeader">
+                 <layout class="QHBoxLayout" name="treeListHeaderLayout" stretch="1,0">
+                  <property name="leftMargin">
+                   <number>0</number>
+                  </property>
+                  <property name="topMargin">
+                   <number>0</number>
+                  </property>
+                  <property name="rightMargin">
+                   <number>0</number>
+                  </property>
+                  <property name="bottomMargin">
+                   <number>0</number>
+                  </property>
+                  <property name="spacing">
+                   <number>8</number>
+                  </property>
+                  <item>
+                   <widget class="QLabel" name="treeBatchCountLabel">
+                    <property name="text">
+                     <string>0 árvores na lista</string>
+                    </property>
+                    <property name="role" stdset="0">
+                     <string>sectionTitle</string>
+                    </property>
+                    <property name="textFormat">
+                     <enum>Qt::PlainText</enum>
+                    </property>
+                    <property name="wordWrap">
+                     <bool>true</bool>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QPushButton" name="newTreeListButton">
+                    <property name="text">
+                     <string>Nova lista</string>
+                    </property>
+                    <property name="role" stdset="0">
+                     <string>secondary</string>
+                    </property>
+                    <property name="minimumSize">
+                     <size>
+                      <width>0</width>
+                      <height>32</height>
+                     </size>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </widget>
+               </item>
+               <item>
+                <widget class="QTableWidget" name="treeListTable">
+                 <property name="accessibleName">
+                  <string>Árvores da lista de exportação</string>
+                 </property>
+                 <property name="columnCount">
+                  <number>5</number>
+                 </property>
+                 <property name="rowCount">
+                  <number>0</number>
+                 </property>
+                 <property name="editTriggers">
+                  <set>QAbstractItemView::NoEditTriggers</set>
+                 </property>
+                 <property name="selectionBehavior">
+                  <enum>QAbstractItemView::SelectRows</enum>
+                 </property>
+                 <property name="selectionMode">
+                  <enum>QAbstractItemView::SingleSelection</enum>
+                 </property>
+                 <property name="alternatingRowColors">
+                  <bool>true</bool>
+                 </property>
+                 <property name="minimumSize">
+                  <size>
+                   <width>0</width>
+                   <height>112</height>
+                  </size>
+                 </property>
+                 <property name="maximumSize">
+                  <size>
+                   <width>16777215</width>
+                   <height>142</height>
+                  </size>
+                 </property>
+                 <attribute name="verticalHeaderVisible">
+                  <bool>false</bool>
+                 </attribute>
+                 <column>
+                  <property name="text">
+                   <string>Árvore</string>
+                  </property>
+                 </column>
+                 <column>
+                  <property name="text">
+                   <string>Parcela</string>
+                  </property>
+                 </column>
+                 <column>
+                  <property name="text">
+                   <string>Espécie / estado</string>
+                  </property>
+                 </column>
+                 <column>
+                  <property name="text">
+                   <string>Altura (m)</string>
+                  </property>
+                 </column>
+                 <column>
+                  <property name="text">
+                   <string>Copa (m²)</string>
+                  </property>
+                 </column>
+                </widget>
+               </item>
+               <item>
+                <widget class="QPushButton" name="removeTreeButton">
+                 <property name="text">
+                  <string>Remover árvore selecionada</string>
+                 </property>
+                 <property name="role" stdset="0">
+                  <string>secondary</string>
+                 </property>
+                 <property name="minimumSize">
+                  <size>
+                   <width>0</width>
+                   <height>32</height>
+                  </size>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="exportButton">
+              <property name="text">
+               <string>Exportar árvores CSV</string>
+              </property>
+              <property name="role" stdset="0">
+               <string>primary</string>
+              </property>
+              <property name="cursor">
+               <cursorShape>PointingHandCursor</cursorShape>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>34</height>
+               </size>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="treeExportHelp">
+              <property name="text">
+               <string>Cada árvore ocupa uma linha no CSV. Conclua a copa, adicione outra árvore ou finalize a lista para exportar.</string>
+              </property>
+              <property name="role" stdset="0">
+               <string>muted</string>
+              </property>
+              <property name="textFormat">
+               <enum>Qt::PlainText</enum>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <spacer name="treeBottomSpace">
+              <property name="orientation">
+               <enum>Qt::Vertical</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>1</width>
+                <height>4</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+           </layout>
+          </widget>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="conglomeratePage">
+       <attribute name="title">
+        <string>Parcela</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="conglomeratePageOuter">
+        <property name="leftMargin">
+         <number>0</number>
+        </property>
+        <property name="topMargin">
+         <number>0</number>
+        </property>
+        <property name="rightMargin">
+         <number>0</number>
+        </property>
+        <property name="bottomMargin">
+         <number>0</number>
+        </property>
+        <property name="spacing">
+         <number>0</number>
+        </property>
+        <item>
+         <widget class="QScrollArea" name="conglomerateScrollArea">
+          <property name="widgetResizable">
+           <bool>true</bool>
+          </property>
+          <property name="frameShape">
+           <enum>QFrame::NoFrame</enum>
+          </property>
+          <property name="horizontalScrollBarPolicy">
+           <enum>Qt::ScrollBarAlwaysOff</enum>
+          </property>
+          <widget class="QWidget" name="conglomeratePageContent">
+           <layout class="QVBoxLayout" name="conglomeratePageLayout">
+            <property name="leftMargin">
+             <number>14</number>
+            </property>
+            <property name="topMargin">
+             <number>14</number>
+            </property>
+            <property name="rightMargin">
+             <number>14</number>
+            </property>
+            <property name="bottomMargin">
+             <number>14</number>
+            </property>
+            <property name="spacing">
+             <number>10</number>
+            </property>
+            <item>
+             <widget class="QLabel" name="m37TitleLabel">
+              <property name="text">
+               <string>Amostragem de alturas</string>
+              </property>
+              <property name="role" stdset="0">
+               <string>sectionTitle</string>
+              </property>
+              <property name="textFormat">
+               <enum>Qt::PlainText</enum>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="conglomerateHelp">
+              <property name="text">
+               <string>Defina no mapa o centro da parcela. Os rasters selecionados acima fornecem as alturas.</string>
+              </property>
+              <property name="role" stdset="0">
+               <string>muted</string>
+              </property>
+              <property name="textFormat">
+               <enum>Qt::PlainText</enum>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <layout class="QHBoxLayout" name="samplingPlanLayout" stretch="1,1,1">
+              <property name="leftMargin">
+               <number>0</number>
+              </property>
+              <property name="topMargin">
+               <number>0</number>
+              </property>
+              <property name="rightMargin">
+               <number>0</number>
+              </property>
+              <property name="bottomMargin">
+               <number>0</number>
+              </property>
+              <property name="spacing">
+               <number>8</number>
+              </property>
+              <item>
+               <widget class="QFrame" name="envelopeCard">
+                <property name="role" stdset="0">
+                 <string>metric</string>
+                </property>
+                <layout class="QVBoxLayout" name="envelopeLayout">
+                 <property name="leftMargin">
+                  <number>12</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>12</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>12</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>12</number>
+                 </property>
+                 <property name="spacing">
+                  <number>5</number>
+                 </property>
+                 <item>
+                  <widget class="QLabel" name="envelopeCaption">
+                   <property name="text">
+                    <string>DIMENSÕES</string>
+                   </property>
+                   <property name="role" stdset="0">
+                    <string>metricCaption</string>
+                   </property>
+                   <property name="textFormat">
+                    <enum>Qt::PlainText</enum>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="envelopeLabel">
+                   <property name="text">
+                    <string>100 m × 100 m</string>
+                   </property>
+                   <property name="role" stdset="0">
+                    <string>metricValue</string>
+                   </property>
+                   <property name="textFormat">
+                    <enum>Qt::PlainText</enum>
+                   </property>
+                   <property name="wordWrap">
+                    <bool>true</bool>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item>
+               <widget class="QFrame" name="subplotsCard">
+                <property name="role" stdset="0">
+                 <string>metric</string>
+                </property>
+                <layout class="QVBoxLayout" name="subplotsLayout">
+                 <property name="leftMargin">
+                  <number>12</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>12</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>12</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>12</number>
+                 </property>
+                 <property name="spacing">
+                  <number>5</number>
+                 </property>
+                 <item>
+                  <widget class="QLabel" name="subplotsCaption">
+                   <property name="text">
+                    <string>SUBPARCELAS (1 m × 10 m)</string>
+                   </property>
+                   <property name="role" stdset="0">
+                    <string>metricCaption</string>
+                   </property>
+                   <property name="textFormat">
+                    <enum>Qt::PlainText</enum>
+                   </property>
+                   <property name="wordWrap">
+                    <bool>true</bool>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="subplotsLabel">
+                   <property name="text">
+                    <string>100</string>
+                   </property>
+                   <property name="role" stdset="0">
+                    <string>metricValue</string>
+                   </property>
+                   <property name="textFormat">
+                    <enum>Qt::PlainText</enum>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item>
+               <widget class="QFrame" name="samplesCard">
+                <property name="role" stdset="0">
+                 <string>metric</string>
+                </property>
+                <layout class="QVBoxLayout" name="samplesLayout">
+                 <property name="leftMargin">
+                  <number>12</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>12</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>12</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>12</number>
+                 </property>
+                 <property name="spacing">
+                  <number>5</number>
+                 </property>
+                 <item>
+                  <widget class="QLabel" name="samplesCaption">
+                   <property name="text">
+                    <string>PONTOS RASTER</string>
+                   </property>
+                   <property name="role" stdset="0">
+                    <string>metricCaption</string>
+                   </property>
+                   <property name="textFormat">
+                    <enum>Qt::PlainText</enum>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="samplesLabel">
+                   <property name="text">
+                    <string>100</string>
+                   </property>
+                   <property name="role" stdset="0">
+                    <string>metricValue</string>
+                   </property>
+                   <property name="textFormat">
+                    <enum>Qt::PlainText</enum>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <widget class="QPushButton" name="generateM37Button">
+              <property name="text">
+               <string>Gerar parcela no mapa</string>
+              </property>
+              <property name="role" stdset="0">
+               <string>primary</string>
+              </property>
+              <property name="cursor">
+               <cursorShape>PointingHandCursor</cursorShape>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>34</height>
+               </size>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="exportM37CsvButton">
+              <property name="text">
+               <string>Exportar alturas CSV</string>
+              </property>
+              <property name="role" stdset="0">
+               <string>secondary</string>
+              </property>
+              <property name="cursor">
+               <cursorShape>PointingHandCursor</cursorShape>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>34</height>
+               </size>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QFrame" name="conglomerateStatusCard">
+              <property name="role" stdset="0">
+               <string>status</string>
+              </property>
+              <layout class="QVBoxLayout" name="conglomerateStatusCardLayout">
+               <property name="leftMargin">
+                <number>12</number>
+               </property>
+               <property name="topMargin">
+                <number>12</number>
+               </property>
+               <property name="rightMargin">
+                <number>12</number>
+               </property>
+               <property name="bottomMargin">
+                <number>12</number>
+               </property>
+               <property name="spacing">
+                <number>8</number>
+               </property>
+               <item>
+                <widget class="QLabel" name="conglomerateStatusHeading">
+                 <property name="text">
+                  <string>ÚLTIMA OPERAÇÃO</string>
+                 </property>
+                 <property name="role" stdset="0">
+                  <string>fieldCaption</string>
+                 </property>
+                 <property name="textFormat">
+                  <enum>Qt::PlainText</enum>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QLabel" name="m37StatusLabel">
+                 <property name="text">
+                  <string>Nenhuma parcela gerada.</string>
+                 </property>
+                 <property name="role" stdset="0">
+                  <string>result</string>
+                 </property>
+                 <property name="textFormat">
+                  <enum>Qt::PlainText</enum>
+                 </property>
+                 <property name="wordWrap">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item>
+             <widget class="QFrame" name="conglomerateInfoCard">
+              <property name="role" stdset="0">
+               <string>note</string>
+              </property>
+              <layout class="QVBoxLayout" name="conglomerateInfoCardLayout">
+               <property name="leftMargin">
+                <number>12</number>
+               </property>
+               <property name="topMargin">
+                <number>12</number>
+               </property>
+               <property name="rightMargin">
+                <number>12</number>
+               </property>
+               <property name="bottomMargin">
+                <number>12</number>
+               </property>
+               <property name="spacing">
+                <number>8</number>
+               </property>
+               <item>
+                <widget class="QLabel" name="conglomerateInfoTitle">
+                 <property name="text">
+                  <string>Destino no Fazenda ECO</string>
+                 </property>
+                 <property name="role" stdset="0">
+                  <string>sectionTitle</string>
+                 </property>
+                 <property name="textFormat">
+                  <enum>Qt::PlainText</enum>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QLabel" name="conglomerateInfoText">
+                 <property name="text">
+                  <string>O CSV contém os pontos de altura, seus estados e o sistema de coordenadas para uso no Fazenda ECO.</string>
+                 </property>
+                 <property name="role" stdset="0">
+                  <string>muted</string>
+                 </property>
+                 <property name="textFormat">
+                  <enum>Qt::PlainText</enum>
+                 </property>
+                 <property name="wordWrap">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item>
+             <spacer name="conglomerateBottomSpace">
+              <property name="orientation">
+               <enum>Qt::Vertical</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>1</width>
+                <height>4</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+           </layout>
+          </widget>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="speciesPage">
+       <attribute name="title">
+        <string>Grade de espécies</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="speciesPageOuter">
+        <property name="leftMargin">
+         <number>0</number>
+        </property>
+        <property name="topMargin">
+         <number>0</number>
+        </property>
+        <property name="rightMargin">
+         <number>0</number>
+        </property>
+        <property name="bottomMargin">
+         <number>0</number>
+        </property>
+        <property name="spacing">
+         <number>0</number>
+        </property>
+        <item>
+         <widget class="QScrollArea" name="speciesScrollArea">
+          <property name="widgetResizable">
+           <bool>true</bool>
+          </property>
+          <property name="frameShape">
+           <enum>QFrame::NoFrame</enum>
+          </property>
+          <property name="horizontalScrollBarPolicy">
+           <enum>Qt::ScrollBarAlwaysOff</enum>
+          </property>
+          <widget class="QWidget" name="speciesPageContent">
+           <layout class="QVBoxLayout" name="speciesPageLayout">
+            <property name="leftMargin">
+             <number>14</number>
+            </property>
+            <property name="topMargin">
+             <number>14</number>
+            </property>
+            <property name="rightMargin">
+             <number>14</number>
+            </property>
+            <property name="bottomMargin">
+             <number>14</number>
+            </property>
+            <property name="spacing">
+             <number>10</number>
+            </property>
+            <item>
+             <widget class="QLabel" name="speciesTitleLabel">
+              <property name="text">
+               <string>Classificação em grade</string>
+              </property>
+              <property name="role" stdset="0">
+               <string>sectionTitle</string>
+              </property>
+              <property name="textFormat">
+               <enum>Qt::PlainText</enum>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="speciesHelp">
+              <property name="text">
+               <string>Classifique os recortes RGB da última parcela. Gere primeiro a parcela na aba ao lado.</string>
+              </property>
+              <property name="role" stdset="0">
+               <string>muted</string>
+              </property>
+              <property name="textFormat">
+               <enum>Qt::PlainText</enum>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="classifySpeciesCongButton">
+              <property name="text">
+               <string>Classificar grade da parcela</string>
+              </property>
+              <property name="role" stdset="0">
+               <string>primary</string>
+              </property>
+              <property name="cursor">
+               <cursorShape>PointingHandCursor</cursorShape>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>34</height>
+               </size>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="exportSpeciesCsvButton">
+              <property name="text">
+               <string>Exportar diagnóstico CSV</string>
+              </property>
+              <property name="role" stdset="0">
+               <string>secondary</string>
+              </property>
+              <property name="cursor">
+               <cursorShape>PointingHandCursor</cursorShape>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>34</height>
+               </size>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QFrame" name="speciesStatusCard">
+              <property name="role" stdset="0">
+               <string>status</string>
+              </property>
+              <layout class="QVBoxLayout" name="speciesStatusCardLayout">
+               <property name="leftMargin">
+                <number>12</number>
+               </property>
+               <property name="topMargin">
+                <number>12</number>
+               </property>
+               <property name="rightMargin">
+                <number>12</number>
+               </property>
+               <property name="bottomMargin">
+                <number>12</number>
+               </property>
+               <property name="spacing">
+                <number>8</number>
+               </property>
+               <item>
+                <widget class="QLabel" name="speciesStatusHeading">
+                 <property name="text">
+                  <string>RESUMO DA CLASSIFICAÇÃO</string>
+                 </property>
+                 <property name="role" stdset="0">
+                  <string>fieldCaption</string>
+                 </property>
+                 <property name="textFormat">
+                  <enum>Qt::PlainText</enum>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QLabel" name="speciesStatusLabel">
+                 <property name="text">
+                  <string>Nenhuma classificação executada.</string>
+                 </property>
+                 <property name="role" stdset="0">
+                  <string>result</string>
+                 </property>
+                 <property name="textFormat">
+                  <enum>Qt::PlainText</enum>
+                 </property>
+                 <property name="wordWrap">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item>
+             <widget class="QFrame" name="speciesInfoCard">
+              <property name="role" stdset="0">
+               <string>note</string>
+              </property>
+              <layout class="QVBoxLayout" name="speciesInfoCardLayout">
+               <property name="leftMargin">
+                <number>12</number>
+               </property>
+               <property name="topMargin">
+                <number>12</number>
+               </property>
+               <property name="rightMargin">
+                <number>12</number>
+               </property>
+               <property name="bottomMargin">
+                <number>12</number>
+               </property>
+               <property name="spacing">
+                <number>8</number>
+               </property>
+               <item>
+                <widget class="QLabel" name="speciesInfoTitle">
+                 <property name="text">
+                  <string>Saída por recorte RGB</string>
+                 </property>
+                 <property name="role" stdset="0">
+                  <string>sectionTitle</string>
+                 </property>
+                 <property name="textFormat">
+                  <enum>Qt::PlainText</enum>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QLabel" name="speciesInfoText">
+                 <property name="text">
+                  <string>A exportação reúne classes, probabilidades e rejeições para diagnóstico. Para carbono por árvore, use copas delimitadas na aba Árvore individual.</string>
+                 </property>
+                 <property name="role" stdset="0">
+                  <string>muted</string>
+                 </property>
+                 <property name="textFormat">
+                  <enum>Qt::PlainText</enum>
+                 </property>
+                 <property name="wordWrap">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item>
+             <spacer name="speciesBottomSpace">
+              <property name="orientation">
+               <enum>Qt::Vertical</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>1</width>
+                <height>4</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+           </layout>
+          </widget>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </widget>
+    </item>
+    <item>
+     <layout class="QHBoxLayout" name="footerLayout" stretch="1,0">
+      <property name="leftMargin">
+       <number>0</number>
+      </property>
+      <property name="topMargin">
+       <number>0</number>
+      </property>
+      <property name="rightMargin">
+       <number>0</number>
+      </property>
+      <property name="bottomMargin">
+       <number>0</number>
+      </property>
+      <property name="spacing">
+       <number>8</number>
+      </property>
+      <item>
+       <widget class="QLabel" name="footerLabel">
+        <property name="text">
+         <string>Saídas compatíveis com Fazenda ECO</string>
+        </property>
+        <property name="role" stdset="0">
+         <string>footer</string>
+        </property>
+        <property name="textFormat">
+         <enum>Qt::PlainText</enum>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="experimentalLabel">
+        <property name="text">
+         <string>Experimental</string>
+        </property>
+        <property name="role" stdset="0">
+         <string>footer</string>
+        </property>
+        <property name="textFormat">
+         <enum>Qt::PlainText</enum>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+   </layout>
+  </widget>
+ </widget>
+ <resources />
+ <connections />
+</ui>

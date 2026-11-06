@@ -1,0 +1,20 @@
+[general]
+name=Fazenda Classifier
+description=Forest inventory and UAV remote sensing: sampling plots, canopy height, crown morphometry and optional CNN species classification.
+about=Fazenda Classifier integrates forest inventory and UAV remote sensing within QGIS, providing georeferenced measurements of forest structure and an optional framework for tree species classification using convolutional neural networks (CNNs). The plugin generates 100 × 100 m sampling plots with 100 individual 1 × 10 m sampling windows and derives canopy height measurements from digital surface models (DSM) and digital terrain models (DTM). Plot sampling identifies DSM maxima within 1 × 10 m windows and samples terrain elevation at the corresponding physical location. Horizontal coordinate transformations support analyses involving rasters with different coordinate reference systems. The individual tree workflow combines manual crown delineation, planar crown area, maximum crown span and pointwise DSM–DTM height measurements. A multi-tree list retains independent crown measurements and identifiers before CSV export. Georeferenced CSV profiles support Fazenda ECO forest carbon prediction: raster sampling points and individually delineated crowns. Exports retain explicit units, tree identifiers, classification results, methods and coordinate reference information. RGB grid classification remains a separate diagnostic output. Optional species classification applies a LeNet CNN to RGB image patches using externally supplied, compatible model weights. The author's trained weights are private and are not distributed. Sampling, height and crown measurement tools remain available without a classification model. Outputs support research on forest structure, forest carbon, aboveground carbon (AGC) modelling and climate studies through external analytical workflows. This version provides supporting measurements; it does not directly predict AGC, calculate H5 or simulate climate projections.
+version=1.1.0-rc8
+qgisMinimumVersion=3.36
+qgisMaximumVersion=3.99
+author=Leonardo Heraki
+email=leonardoheraki@outlook.com
+homepage=https://github.com/leonardoheraki/fazenda-classifier#readme
+repository=https://github.com/leonardoheraki/fazenda-classifier
+tracker=https://github.com/leonardoheraki/fazenda-classifier/issues
+license=GPL-2.0-or-later
+category=Raster
+tags=forestry,canopy,DSM,DTM,forest inventory,remote sensing
+icon=icon.svg
+experimental=True
+deprecated=False
+hasProcessingProvider=False
+changelog=1.1.0-rc8: Rename the plot workflow to Parcela; show 100 m × 100 m plot dimensions and 1 m × 10 m subplots. Draw the 100 original height-sampling windows as individual subplot polygons while retaining the original sampling centers and height algorithm. Add a multi-tree list with add/finish, review/removal, duplicate-ID protection and complete CSV export. Preserve accepted species, explicit units, full precision and Fazenda ECO revision 9 compatibility (tree crowns → DBH → plot-level carbon prediction).

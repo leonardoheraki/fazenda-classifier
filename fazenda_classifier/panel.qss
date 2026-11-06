@@ -1,0 +1,100 @@
+/* Native Qt panel. Palette is local to the plugin, independent of QGIS theme. */
+QMainWindow, QWidget#centralwidget {
+    background: #f4f6f3;
+    color: #243b31;
+    font-family: "Segoe UI", "Noto Sans", sans-serif;
+    font-size: 12px;
+}
+QLabel { color: #243b31; background: transparent; }
+QLabel[role="brandTitle"] { font-size: 23px; font-weight: 650; color: #214e3b; }
+QLabel[role="subtitle"] { font-size: 12px; color: #63756b; }
+QLabel[role="badge"] {
+    color: #35634b; background: #e7eee7; border-radius: 5px;
+    padding: 5px 8px; font-size: 10px; font-weight: 600;
+}
+QLabel[role="sectionTitle"] { color: #294b3a; font-size: 14px; font-weight: 600; }
+QLabel[role="fieldCaption"], QLabel[role="metricCaption"] {
+    color: #67786c; font-size: 10px; font-weight: 600;
+}
+QLabel[role="muted"] { color: #627267; font-size: 11px; }
+QLabel[role="result"] { color: #314d3e; font-size: 12px; font-weight: 500; }
+QLabel[role="footer"] { color: #77867c; font-size: 10px; }
+QLabel[role="metricValue"] { color: #244f3c; font-size: 20px; font-weight: 600; }
+QFrame[role="card"] {
+    background: #ffffff; border: 1px solid #dde5dc; border-radius: 8px;
+}
+QFrame[role="metric"] {
+    background: #edf3ed; border: 1px solid #e0e8de; border-radius: 7px;
+}
+QFrame[role="status"] {
+    background: #f0f5ee; border: 1px solid #dce6d8; border-radius: 7px;
+}
+QFrame[role="note"] {
+    background: #f6f7f2; border: 1px solid #e4e8dd; border-radius: 7px;
+}
+QLineEdit, QComboBox {
+    color: #2d4336; background: #ffffff; border: 1px solid #cfdace;
+    border-radius: 5px; padding: 5px 8px; selection-background-color: #2d6549;
+    selection-color: #ffffff; font-size: 12px;
+}
+QLineEdit:focus, QComboBox:focus { border: 1px solid #3c7a54; }
+QComboBox::drop-down { border: none; width: 24px; }
+QComboBox::down-arrow {
+    image: url("__PLUGIN_DIR__/chevron_down.svg"); width: 12px; height: 12px;
+}
+QComboBox QAbstractItemView {
+    color: #263e30; background: #ffffff; border: 1px solid #cfdace;
+    selection-background-color: #e4efe2; selection-color: #244f3c;
+}
+QPushButton {
+    background: #ffffff; color: #30533e; border: 1px solid #cbd8c9;
+    border-radius: 5px; padding: 5px 11px; font-size: 12px; font-weight: 500;
+}
+QPushButton:hover { background: #f0f5ed; border-color: #8eac8e; }
+QPushButton:pressed { background: #e1ecdd; }
+QPushButton:focus { border: 1px solid #39754c; }
+QPushButton[role="primary"] {
+    background: #2a5e42; color: #ffffff; border-color: #2a5e42; font-weight: 600;
+}
+QPushButton[role="primary"]:hover { background: #336f4d; border-color: #336f4d; }
+QPushButton[role="primary"]:pressed { background: #204e35; }
+QPushButton:disabled {
+    background: #e4ebe1; color: #859b87; border-color: #dce5d8;
+}
+QTabWidget::pane {
+    border: 1px solid #dce4d8; border-radius: 7px; background: #ffffff; top: -1px;
+}
+QTabBar::tab {
+    background: #edf1ea; color: #647765; padding: 11px 12px;
+    border: 1px solid #dce4d8; border-bottom: 2px solid #dce4d8;
+    font-size: 12px; font-weight: 500;
+}
+QTabBar::tab:first { border-top-left-radius: 6px; }
+QTabBar::tab:last { border-top-right-radius: 6px; }
+QTabBar::tab:selected {
+    background: #ffffff; color: #285439; border-bottom: 2px solid #3b7a50;
+    font-weight: 600;
+}
+QTabBar::tab:hover:!selected { background: #e5ecdf; }
+QScrollArea { background: #ffffff; border: none; }
+QWidget#treePageContent, QWidget#conglomeratePageContent, QWidget#speciesPageContent {
+    background: #ffffff;
+}
+QScrollBar:vertical {
+    background: #f1f4ed; width: 9px; margin: 2px;
+}
+QScrollBar::handle:vertical {
+    background: #b9c9b4; border-radius: 3px; min-height: 28px;
+}
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { background: transparent; }
+QToolTip { color: #294a36; background: #fbfcf8; border: 1px solid #bfcfb8; padding: 5px; }
+QTableWidget#treeListTable {
+    color: #2d4336; background: #ffffff; alternate-background-color: #f5f8f2;
+    border: 1px solid #d7e1d2; gridline-color: #e6ece2;
+    selection-background-color: #dcebd8; selection-color: #234a34; font-size: 11px;
+}
+QTableWidget#treeListTable QHeaderView::section {
+    background: #edf3e9; color: #36533d; padding: 5px;
+    border: none; border-right: 1px solid #dde6d8; font-size: 11px;
+}
