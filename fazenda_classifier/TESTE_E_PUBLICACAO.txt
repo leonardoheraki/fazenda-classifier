@@ -1,10 +1,10 @@
-FAZENDA CLASSIFIER 1.1.1 — CONFERÊNCIA ANTES DA PUBLICAÇÃO
+FAZENDA CLASSIFIER 1.1.2 — CONFERÊNCIA ANTES DA PUBLICAÇÃO
 
 Pacote público de inventário derivado da RC17. Este documento é um roteiro,
 não uma declaração de testes nativos já concluídos nesta edição.
 
 1. Instalar o ZIP em um perfil de teste do QGIS compatível e reiniciar.
-2. Confirmar versão 1.1.1 e duas abas: Árvore individual e Parcela.
+2. Confirmar versão 1.1.2 e duas abas: Árvore individual e Parcela.
    Não deve existir menu de modelo, classificação ou grade de espécies.
 3. Carregar MDS, MDT e ortofoto RGB de referência. Conferir SRC em metros,
    unidades verticais e cobertura. Confirmar ausência de pedido de modelos
@@ -25,7 +25,7 @@ não uma declaração de testes nativos já concluídos nesta edição.
 
 PUBLICAÇÃO
 O ZIP deve conter uma única pasta fazenda_classifier com metadata.txt na raiz
-dessa pasta. Manter o mesmo nome de plugin e a versão 1.1.1 com experimental=True.
+dessa pasta. Manter o mesmo nome de plugin e a versão 1.1.2 com experimental=True.
 Não incluir arquivos de pesos, módulos de classificação, caches ou dados privados.
 O conteúdo de código publicado no GitHub deve corresponder ao pacote enviado
 ao QGIS. Enviar a nova versão pela conta mantenedora e conferir aprovação e

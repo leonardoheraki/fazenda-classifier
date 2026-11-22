@@ -1,4 +1,4 @@
-# CSVs — Fazenda Classifier 1.1.1
+# CSVs — Fazenda Classifier 1.1.2
 
 Edição pública de inventário derivada da RC17. Há dois tipos de registro:
 pontos amostrais de altura raster e árvores com copas delimitadas.

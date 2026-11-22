@@ -1,4 +1,4 @@
-FAZENDA CLASSIFIER 1.1.1 — INVENTÁRIO FLORESTAL
+FAZENDA CLASSIFIER 1.1.2 — INVENTÁRIO FLORESTAL
 
 Edição pública experimental derivada das ferramentas de inventário da RC17.
 Autor: Leonardo Heraki. Licença: GPL-2.0-or-later.
@@ -11,8 +11,8 @@ pesos ou dependências de aprendizado profundo.
 INSTALAÇÃO
 1. Salve as camadas temporárias e os dados da sessão atual que desejar conservar.
 2. No QGIS, abra Complementos > Gerenciar e Instalar Complementos >
-   Instalar a partir de ZIP e selecione fazenda_classifier_1.1.1.zip.
-3. Reinicie o QGIS e confira a versão 1.1.1 no painel.
+   Instalar a partir de ZIP e selecione fazenda_classifier_1.1.2.zip.
+3. Reinicie o QGIS e confira a versão 1.1.2 no painel.
 4. Carregue MDS, MDT e, para arquivar imagens de copas, a ortofoto RGB.
 5. Use um SRC de trabalho projetado em metros. Confira as camadas selecionadas.
 
