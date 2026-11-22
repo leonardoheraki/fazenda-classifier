@@ -1,0 +1,20 @@
+[general]
+name=Fazenda Classifier
+description=Forest inventory and UAV remote sensing: sampling plots, canopy height, crown measurements and georeferenced CSV export.
+about=Experimental public inventory edition derived from RC17. Creates 100 x 100 m sampling plots with 100 height-sampling windows of 1 x 10 m, with interactive placement and rotation. Samples DSM maxima and DTM at the same physical locations. Individual-tree tools measure pointwise DSM-DTM height, manually delineated planar crown area and maximum crown span, retain a multi-tree list, and archive masked native-resolution crown GeoTIFFs. Exports georeferenced plot-height CSVs for external Fazenda ECO workflows and measurement-only tree reports. Tree reports do not identify species or provide ready-to-use species-dependent carbon inputs. Uses QGIS, NumPy and GDAL. This public edition does not include species classification, neural-network architectures, model loading or trained weights. It does not calculate DBH, H5, AGC or climate projections. QGIS 4 compatibility is not declared.
+version=1.1.2
+qgisMinimumVersion=3.36
+qgisMaximumVersion=3.99
+author=Leonardo Heraki
+email=leonardoheraki@outlook.com
+homepage=https://github.com/leonardoheraki/fazenda-classifier#readme
+repository=https://github.com/leonardoheraki/fazenda-classifier
+tracker=https://github.com/leonardoheraki/fazenda-classifier/issues
+license=GPL-2.0-or-later
+category=Raster
+tags=forestry,canopy,DSM,DTM,forest inventory,remote sensing
+icon=icon.svg
+experimental=True
+deprecated=False
+hasProcessingProvider=False
+changelog=1.1.2: The UI inventory test now uses defusedxml and rejects DTDs, entities and external references. Forest inventory tools remain independent of the test library. This public edition is based on RC17 and contains no CNN or trained weights.

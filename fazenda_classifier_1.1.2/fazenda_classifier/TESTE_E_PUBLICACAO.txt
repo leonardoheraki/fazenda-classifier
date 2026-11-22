@@ -1,0 +1,32 @@
+FAZENDA CLASSIFIER 1.1.2 — CONFERÊNCIA ANTES DA PUBLICAÇÃO
+
+Pacote público de inventário derivado da RC17. Este documento é um roteiro,
+não uma declaração de testes nativos já concluídos nesta edição.
+
+1. Instalar o ZIP em um perfil de teste do QGIS compatível e reiniciar.
+2. Confirmar versão 1.1.2 e duas abas: Árvore individual e Parcela.
+   Não deve existir menu de modelo, classificação ou grade de espécies.
+3. Carregar MDS, MDT e ortofoto RGB de referência. Conferir SRC em metros,
+   unidades verticais e cobertura. Confirmar ausência de pedido de modelos
+   ou de instalação de dependências de aprendizado profundo.
+4. Gerar uma parcela, mover e girar a prévia, confirmar e conferir as
+   100 janelas de altura. Testar também cancelamento da prévia.
+5. Conferir alturas MDS–MDT nos pontos e exportar o perfil de parcelas;
+   testar relatório completo com pontos inválidos/NoData.
+6. Selecionar duas árvores, delimitar e concluir copas, conferir altura,
+   área e diâmetro máximo com medições de referência. Verificar os GeoTIFFs
+   nativos quando a ortofoto estiver disponível.
+7. Adicionar ambas à lista, testar ID repetido, remover/reinserir um registro,
+   finalizar e exportar CSV. Confirmar ausência de campos de predição de
+   espécies e probabilidades e preservação das medições.
+8. Conferir cancelamento de exportação e aviso ao fechar dados não exportados.
+9. Registrar versão do QGIS, sistema operacional, dados usados, resultados
+   observados e limitações. Não confundir teste funcional com validação científica.
+
+PUBLICAÇÃO
+O ZIP deve conter uma única pasta fazenda_classifier com metadata.txt na raiz
+dessa pasta. Manter o mesmo nome de plugin e a versão 1.1.2 com experimental=True.
+Não incluir arquivos de pesos, módulos de classificação, caches ou dados privados.
+O conteúdo de código publicado no GitHub deve corresponder ao pacote enviado
+ao QGIS. Enviar a nova versão pela conta mantenedora e conferir aprovação e
+seleção da versão pelo repositório. Não publicar como estável sem validação própria.
