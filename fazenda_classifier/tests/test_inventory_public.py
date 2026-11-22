@@ -3,7 +3,7 @@ import ast
 import csv
 import tempfile
 import unittest
-import xml.etree.ElementTree as ET
+from defusedxml import ElementTree as ET
 from pathlib import Path
 from test_tree import tree, crown
 from test_csv_exports import exports, measured_tree
@@ -26,7 +26,8 @@ class PublicInventoryTests(unittest.TestCase):
         self.assertFalse([p for p in ROOT.rglob('*') if p.suffix.lower() in {'.pth','.pt','.onnx','.h5','.ckpt'}])
 
     def test_ui_has_only_inventory_workflows(self):
-        ui = ET.parse(ROOT/'main_interface.ui')
+        ui = ET.parse(ROOT / 'main_interface.ui', forbid_dtd=True,
+                      forbid_entities=True, forbid_external=True)
         names = {w.attrib.get('name') for w in ui.iter('widget')}
         self.assertTrue({'generateM37Button', 'moveM37Button', 'rotateM37Button',
             'fixM37Button', 'selectAreaButton', 'finishDelimitationButton', 'exportButton'}.issubset(names))

@@ -124,7 +124,7 @@
        <item>
         <widget class="QLabel" name="versionBadge">
          <property name="text">
-          <string>1.1.1</string>
+          <string>1.1.2</string>
          </property>
          <property name="role" stdset="0">
           <string>badge</string>
