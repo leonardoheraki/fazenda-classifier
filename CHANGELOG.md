@@ -16,3 +16,4 @@ Edição pública experimental de inventário florestal, baseada na RC17.
 Verificação: 42 testes unitários e 5 testes de integração aprovados
 no QGIS 3.40.6/Linux, com dados sintéticos. Esses testes não substituem
 a validação científica de campo nem a conferência em outras plataformas.
+
