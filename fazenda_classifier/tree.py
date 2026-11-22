@@ -6,18 +6,12 @@ import uuid
 from pathlib import Path
 
 
-PROBABILITY_FIELDS = (
-    "prob_Araucaria_angustifolia", "prob_Cedrela_fissilis", "prob_Ocotea_porosa",
-)
 TREE_CSV_FIELDS = (
-    "especie", "predicted_class", "final_class", "confidence", "threshold", "status",
-    *PROBABILITY_FIELDS, "altura", "diametro_copa", "area_copa", "coord_tree",
-    "crown_coords", "x_arvore", "y_arvore", "crs_trabalho", "crs_mds", "crs_mdt",
-    "crs_rgb", "mds_no_ponto", "mdt_no_ponto", "status_altura", "metodo_altura",
-    "metodo_diametro", "metodo_area", "metodo_classificacao", "patch_path",
-    "detalhe_classificacao",
+    "altura", "diametro_copa", "area_copa", "coord_tree", "crown_coords",
+    "x_arvore", "y_arvore", "crs_trabalho", "crs_mds", "crs_mdt", "crs_rgb",
+    "mds_no_ponto", "mdt_no_ponto", "status_altura", "metodo_altura",
+    "metodo_diametro", "metodo_area", "crown_tiff_path", "crown_tiff_detail",
 )
-
 
 def crown_metrics(coordinates):
     """Planar polygon area and maximum vertex distance, in metric work units.
@@ -51,15 +45,13 @@ class TreeMeasurement:
         self.crs_mds = self.crs_mdt = self.crs_rgb = ""
         self.mds = self.mdt = self.height = None
         self.height_status = "nao_executada"
-        self.classification = None
-        self.classification_status = "nao_executada"
-        self.classification_detail = ""
-        self.patch_path = ""
         self.clear_crown()
 
     def clear_crown(self):
         self.coordinates = []
         self.diameter = self.area = None
+        self.crown_tiff_path = ""
+        self.crown_tiff_detail = ""
 
     def set_height(self, mds, mdt):
         self.mds, self.mdt = mds, mdt
@@ -74,35 +66,16 @@ class TreeMeasurement:
 
     def set_crown(self, coordinates):
         diameter, area = crown_metrics(coordinates)
+        self.crown_tiff_path = ""
+        self.crown_tiff_detail = ""
         self.coordinates = [(float(x), float(y)) for x, y in coordinates]
         self.diameter, self.area = diameter, area
-
-    def begin_classification(self):
-        self.classification = None
-        self.classification_status = "em_processamento"
-        self.classification_detail = ""
-
-    def set_classification(self, result):
-        self.classification = dict(result)
-        self.classification_status = result["status"]
-        self.classification_detail = ""
-
-    def classification_failed(self, detail):
-        self.classification = None
-        self.classification_status = "erro_processamento"
-        self.classification_detail = str(detail)
 
     def as_csv_row(self):
         if self.area is None:
             raise ValueError("Finalize a delimitação da copa antes de exportar.")
-        if self.classification_status == "em_processamento":
-            raise ValueError("Aguarde a conclusão da classificação antes de exportar.")
-        result = self.classification or {}
         row = dict.fromkeys(TREE_CSV_FIELDS)
-        for name in ("predicted_class", "final_class", "confidence", "threshold", *PROBABILITY_FIELDS):
-            row[name] = result.get(name)
         row.update(
-            especie=result.get("final_class"), status=self.classification_status,
             altura=self.height, diametro_copa=self.diameter, area_copa=self.area,
             coord_tree=repr((self.x, self.y)), crown_coords=json.dumps(self.coordinates),
             x_arvore=self.x, y_arvore=self.y, crs_trabalho=self.crs_work,
@@ -111,9 +84,7 @@ class TreeMeasurement:
             metodo_altura="mds_menos_mdt_no_ponto_selecionado",
             metodo_diametro="maior_distancia_entre_vertices",
             metodo_area="area_plana_poligono_src_trabalho",
-            metodo_classificacao=("recorte_rgb_nativo_256px_reduzido_128px"
-                                  if self.patch_path else "nao_executada"),
-            patch_path=self.patch_path, detalhe_classificacao=self.classification_detail,
+            crown_tiff_path=self.crown_tiff_path, crown_tiff_detail=self.crown_tiff_detail,
         )
         return row
 

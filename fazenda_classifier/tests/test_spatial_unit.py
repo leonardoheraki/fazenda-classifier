@@ -89,7 +89,7 @@ def load_spatial():
     core = types.ModuleType("qgis.core")
     for name, value in dict(QgsCoordinateTransform=Transform, QgsCsException=CsException,
         QgsPointXY=Point, QgsRectangle=Rectangle,
-        QgsUnitTypes=types.SimpleNamespace(DistanceMeters=0)).items():
+        QgsUnitTypes=types.SimpleNamespace(DistanceUnit=types.SimpleNamespace(DistanceMeters=0))).items():
         setattr(core, name, value)
     old = {name: sys.modules.get(name) for name in ("qgis", "qgis.core")}
     sys.modules['qgis'] = types.ModuleType('qgis')
@@ -136,6 +136,22 @@ class TestSpatial(unittest.TestCase):
             self.sampler(Layer(data=[[100.0]*4 for _ in range(40)])), Point(0, 0))
         self.assertEqual(result['altura_m'], 20)
         self.assertEqual(result['status'], 'valido')
+
+    def test_azimuth_rotates_the_window_and_uses_dtm_at_its_dsm_maximum(self):
+        data = [[120.0] * 4 for _ in range(40)]
+        data[12][1] = 600.0  # Inside the north-facing window, outside the east-facing window.
+        data[19][3] = 148.0  # An actual pixel centre inside the east-facing window.
+        dsm = Layer(CRS(100, 200), data)
+        dtm = Layer(CRS(1000, 2000), [[100.0] * 4 for _ in range(40)])
+        result = spatial.maximum_height_window(self.sampler(dsm), self.sampler(dtm), Point(0, 0),
+                                               azimuth=90.0)
+        self.assertEqual(result["n_pixels_janela"], 8)
+        self.assertEqual(result["mds_max"], 148.0)
+        self.assertEqual(result["altura_m"], 48.0)
+        self.assertAlmostEqual(result["x_mds_max"], 0.75)
+        self.assertAlmostEqual(result["y_mds_max"], 0.25)
+        self.assertAlmostEqual(dtm.reads[-1].x(), 1000.75)
+        self.assertAlmostEqual(dtm.reads[-1].y(), 2000.25)
 
     def test_nodata_and_nonfinite_cannot_become_valid(self):
         for bad in (-9999, float('nan'), float('inf')):

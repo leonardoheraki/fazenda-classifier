@@ -1,0 +1,38 @@
+FAZENDA CLASSIFIER 1.1.1 — EDIÇÃO PÚBLICA DE INVENTÁRIO
+Base: arquivo RC17 fornecido pelo autor. Preparação: 22/11/2026.
+Experimental; esta preparação não publica automaticamente nos repositórios.
+
+Escopo: parcelas/posicionamento/rotação, alturas MDS–MDT, copas,
+lista de árvores, GeoTIFFs nativos e CSVs de inventário.
+Retirados: módulo do modelo, carregamento de pesos, classificação individual
+ou em grade, interface de classificação, dependências de aprendizado profundo,
+campos de probabilidades/classes e exportação ECO de árvores dependente de espécie.
+Nenhum peso treinado é incluído.
+
+VERIFICAÇÕES DESTA EDIÇÃO
+42 testes unitários aprovados: geometria de copas, estados de altura,
+lista e IDs de árvores, CSVs, amostragem espacial, GeoTIFFs e limites do pacote.
+5 testes de integração aprovados com QGIS 3.40.6, Linux, interface offscreen:
+- Interface real, seleção/copa, TIFF nativo, finalização e CSV de árvores.
+- Parcela rotacionada, 100 janelas, alturas e CSV de parcelas.
+- Propriedade/ambiguidade das camadas de saída.
+- Posicionamento, movimento, rotação, confirmação e cancelamento de parcela.
+- Medições de copa disponíveis sem RGB/MDS/MDT, com altura ausente.
+Imports de PyTorch, torchvision, Pillow, TensorFlow e ONNX Runtime bloqueados
+ativamente durante a integração. Nenhum deles foi solicitado.
+Painéis de árvore e parcela inspecionados visualmente.
+spatial.py preservado byte a byte da RC17; cálculos de parcelas e exportação
+de alturas preservados (renomeados apenas os identificadores das constantes).
+
+REPRODUÇÃO EM UM PYTHON COM QGIS/GDAL
+QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -p 'test_*.py'
+QT_QPA_PLATFORM=offscreen python3 tests/smoke_inventory.py
+
+LIMITES
+Dados sintéticos e ambiente Linux/QGIS 3.40.6. Estes testes não equivalem a
+validação científica de campo nem certificam todas as versões/plataformas.
+Faixa declarada mantida: QGIS 3.36–3.99. Conferir instalação no Windows do autor
+antes da publicação. O relatório de árvores não identifica espécies e não é
+entrada pronta para cálculos externos que dependam da espécie.
+
+SHA256 do ZIP RC17 de origem: 8233ba1a555eaab7ecb87063c1d7ce172baf6167ba647326207072dd8c7e8e7f

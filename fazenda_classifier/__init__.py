@@ -1,11 +1,9 @@
 import os
 import configparser
-import csv
+import math
 import traceback
 import tempfile
-import numpy as np
 from datetime import datetime
-from concurrent.futures import ThreadPoolExecutor
 
 from qgis.PyQt import uic
 from qgis.PyQt.QtWidgets import (
@@ -14,21 +12,17 @@ from qgis.PyQt.QtWidgets import (
     QMainWindow,
     QTableWidgetItem,
     QHeaderView,
+    QComboBox,
 )
-from qgis.PyQt.QtGui import QIcon, QColor, QImage, QPainter
-from qgis.PyQt.QtCore import Qt, QVariant, QObject, pyqtSignal
+from qgis.PyQt.QtGui import QIcon, QColor
+from qgis.PyQt.QtCore import Qt, QVariant, pyqtSignal
 
-from qgis.PyQt.QtWidgets import QAction
+from qgis.PyQt.QtGui import QAction
 from qgis.core import (
     QgsProject,
-    QgsSettings,
     QgsMessageLog,
     Qgis,
-    QgsRectangle,
     QgsRasterLayer,
-    QgsRaster,
-    QgsRasterPipe,
-    QgsRasterFileWriter,
     QgsPointXY,
     QgsWkbTypes,
     QgsVectorLayer,
@@ -37,50 +31,49 @@ from qgis.core import (
     QgsField,
     QgsFeature,
     QgsGeometry,
-    QgsMapSettings,
-    QgsMapRendererCustomPainterJob,
 )
 from qgis.gui import QgsMapToolEmitPoint, QgsRubberBand
 
-try:
-    from PIL import Image
-except ImportError:
-    Image = None
 
 from .spatial import (
-    SpatialError, RasterSampler, maximum_height_window,
+    MetricFrame, SpatialError, RasterSampler, maximum_height_window,
     require_metric_crs, crs_label, transform_point,
 )
 
 from .tree import TreeMeasurement, TREE_CSV_FIELDS
 from .tree_batch import TreeBatch
-from .csv_exports import (
-    CONGLOMERATE_FIELDS, TREE_ECO_FIELDS, SPECIES_DIAGNOSTIC_FIELDS,
-    prepare_conglomerate_rows, prepare_tree_rows, prepare_species_diagnostic_rows,
-    write_csv,
-)
-from .runtime import create_species_workspace, require_ua_id
-from .outputs import (
-    find_owned_output, mark_owned_output, create_species_layer,
-    validate_previous_species, prepare_species_replacement, publish_species_replacement,
-)
+from .crown_patches import write_native_crown_tiff
+from .csv_exports import CONGLOMERATE_FIELDS, prepare_conglomerate_rows, write_csv
+from .outputs import find_owned_output, mark_owned_output
+
+SAMPLING_SPACING_M = 10.0
+SAMPLING_POINTS_PER_SIDE = 10
+PARCEL_SIDE_M = SAMPLING_SPACING_M * SAMPLING_POINTS_PER_SIDE
 
 
-class ClassificationSignals(QObject):
-    finished = pyqtSignal(object)
-    failed = pyqtSignal(object)
+class ParcelPlacementTool(QgsMapToolEmitPoint):
+    moved = pyqtSignal(object)
+    cancelled = pyqtSignal()
 
+    def canvasMoveEvent(self, event):
+        self.moved.emit(event.mapPoint())
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key.Key_Escape:
+            self.cancelled.emit()
+            event.accept()
+        else:
+            super().keyPressEvent(event)
 
 
 class FazendaPlugin:
     def __init__(self, iface):
         self.iface = iface
         self.plugin_dir = os.path.dirname(__file__)
-        self.model = None
         self.action = None
 
     def initGui(self):
-        self.action = QAction("Classificar Imagem", self.iface.mainWindow())
+        self.action = QAction("Fazenda Classifier — Inventário", self.iface.mainWindow())
         self.action.setIcon(QIcon(os.path.join(self.plugin_dir, "icon.svg")))
         self.action.triggered.connect(self.run)
 
@@ -93,70 +86,32 @@ class FazendaPlugin:
         if self.action is not None:
             self.iface.removeToolBarIcon(self.action)
             self.iface.removePluginRasterMenu("&Fazenda Classifier", self.action)
-
-    def load_fazenda_model(self):
-        if self.model is not None:
-            return self.model
-        try:
-            from .fazenda_model import FazendaModel
-            settings = QgsSettings()
-            local = os.path.join(self.plugin_dir, "fazenda_lenet_3classes_best.pth")
-            model_path = settings.value("FazendaClassifier/model_path", local, type=str)
-            if not os.path.isfile(model_path):
-                model_path, _ = QFileDialog.getOpenFileName(
-                    self.iface.mainWindow(), "Selecionar modelo Fazenda LeNet (.pth)",
-                    os.path.expanduser("~"), "PyTorch state dict (*.pth)")
-                if not model_path:
-                    return None
-            model = FazendaModel(model_path=model_path, confidence_threshold=0.60)
-        except (ImportError, ModuleNotFoundError) as error:
-            QMessageBox.warning(self.iface.mainWindow(), "Classificação indisponível",
-                "A classificação requer PyTorch, torchvision compatível e Pillow "
-                "no Python do QGIS. Consulte o README. A geração de parcelas e alturas "
-                "pode ser usada sem a CNN." f"\n\nDetalhe: {error}")
-            return None
-        except Exception as error:
-            QgsMessageLog.logMessage(traceback.format_exc(), "Fazenda Classifier", Qgis.Critical)
-            QMessageBox.warning(self.iface.mainWindow(), "Modelo não carregado", str(error))
-            return None
-        settings.setValue("FazendaClassifier/model_path", model_path)
-        self.model = model
-        return model
-
     def run(self):
         if not hasattr(self, "window") or self.window is None or self.window._closed:
-            self.window = MainWindow(self.model, self.plugin_dir, self.iface,
-                                     model_loader=self.load_fazenda_model)
-            self.window.setWindowFlags(self.window.windowFlags() | Qt.WindowStaysOnTopHint)
+            self.window = MainWindow(self.plugin_dir, self.iface)
+            self.window.setWindowFlags(self.window.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
         self.window.show()
         self.window.raise_()
         self.window.activateWindow()
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, model, plugin_dir, iface, model_loader=None):
+    def __init__(self, plugin_dir, iface):
         super(MainWindow, self).__init__()
 
         self.iface = iface
         self.plugin_dir = plugin_dir
-        self.model = model
-        self._model_loader = model_loader
         self._closed = False
         self._sampler_cache = {}
-        self._classification_pending = False
-        self._classification_signals = ClassificationSignals(self)
-        self._classification_signals.finished.connect(self._show_classification)
-        self._classification_signals.failed.connect(self._show_classification_error)
 
-        self.classified_species = None
         self._tree_record = None
         self._tree_batch = TreeBatch()
         self._draft_queued = False
         self._queued_draft_key = None
         self._tree_crs = None
+        self._tree_rgb_layer = None
         self._tree_request = 0
         self._capture_active = False
-        self.last_classification_result = None
         self.last_ua_id = None
 
         uic.loadUi(os.path.join(self.plugin_dir, "main_interface.ui"), self)
@@ -174,8 +129,8 @@ class MainWindow(QMainWindow):
         self.removeTreeButton.clicked.connect(self.remove_tree_from_list)
         self.newTreeListButton.clicked.connect(self.new_tree_list)
         self.treeListTable.itemSelectionChanged.connect(self._refresh_tree_batch_buttons)
-        self.treeListTable.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
-        for column, width in enumerate((130, 90, 160, 75, 85)):
+        self.treeListTable.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
+        for column, width in enumerate((160, 100, 100, 100)):
             self.treeListTable.setColumnWidth(column, width)
 
         if hasattr(self, "exportButton"):
@@ -184,7 +139,6 @@ class MainWindow(QMainWindow):
 
         self._refresh_tree_batch_ui()
 
-        self.executor = ThreadPoolExecutor(max_workers=1)
 
         self.area_tool = QgsMapToolEmitPoint(self.iface.mapCanvas())
         self.area_tool.canvasClicked.connect(self.select_area)
@@ -194,30 +148,40 @@ class MainWindow(QMainWindow):
 
         self.rubber_band = QgsRubberBand(
             self.iface.mapCanvas(),
-            QgsWkbTypes.PolygonGeometry,
+            QgsWkbTypes.GeometryType.PolygonGeometry,
         )
         self.rubber_band.setColor(QColor(255, 0, 0))
         self.rubber_band.setWidth(2)
         self.capture_points = []
 
         # =====================================================
-        # Fluxo M-37 + espécies por conglomerado
+        # Fluxo de parcelas e alturas
         # =====================================================
 
-        self.setup_m37_controls()
-
-        self.m37_tool = QgsMapToolEmitPoint(self.iface.mapCanvas())
+        canvas = self.iface.mapCanvas()
+        self._m37_center = None
+        self._m37_mode = None
+        self._m37_crs = None
+        self._m37_previous_tool = None
+        self._m37_preview = QgsRubberBand(canvas, QgsWkbTypes.GeometryType.PolygonGeometry)
+        self._m37_preview.setStrokeColor(QColor("#ffc336"))
+        self._m37_preview.setFillColor(QColor(255, 195, 54, 46))
+        self._m37_preview.setWidth(2)
+        self.m37_tool = ParcelPlacementTool(canvas)
         self.m37_tool.canvasClicked.connect(self.handle_m37_click)
+        self.m37_tool.moved.connect(self.handle_m37_move)
+        self.m37_tool.cancelled.connect(self.cancel_m37_placement)
+        self.m37_tool.deactivated.connect(self._clear_m37_preview)
+        self.setup_m37_controls()
 
         self.m37_last_layers = {
             "conglomerados": None,
             "subparcelas": None,
             "pontos": None,
-            "pontos_especies": None,
         }
 
     # =========================================================
-    # INTERFACE — M-37 E ESPÉCIES
+    # INTERFACE — PARCELAS
     # =========================================================
 
     def _configure_panel(self):
@@ -233,12 +197,12 @@ class MainWindow(QMainWindow):
         self.workflowTabs.tabBar().setExpanding(True)
         # Let long raster names elide inside the combo instead of widening the panel.
         for combo in (self.mdsComboBox, self.mdtComboBox, self.orthoComboBox):
-            combo.setSizeAdjustPolicy(combo.AdjustToMinimumContentsLengthWithIcon)
+            combo.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
             combo.setMinimumContentsLength(8)
         self.mdsComboBox.setToolTip("Modelo digital de superfície (MDS).")
         self.mdtComboBox.setToolTip("Modelo digital de terreno (MDT).")
-        self.orthoComboBox.setToolTip("Ortofoto RGB usada na classificação opcional.")
-        self.exportButton.setToolTip("Escolha o perfil Fazenda ECO ou o relatório completo ao salvar.")
+        self.orthoComboBox.setToolTip("Ortofoto RGB usada para arquivar as copas delimitadas.")
+        self.exportButton.setToolTip("Exporte as medições das árvores em CSV.")
         screen = self.screen() if hasattr(self, "screen") else None
         if screen is not None:
             available = screen.availableGeometry()
@@ -249,9 +213,14 @@ class MainWindow(QMainWindow):
         """Connect controls already grouped in the native tabbed interface."""
         self.refreshRasterButton.clicked.connect(self.refresh_raster_combos)
         self.generateM37Button.clicked.connect(self.activate_m37_tool)
+        self.moveM37Button.clicked.connect(lambda checked: self._set_m37_mode("move" if checked else None))
+        self.rotateM37Button.clicked.connect(lambda checked: self._set_m37_mode("rotate" if checked else None))
+        self.m37AzimuthSpin.valueChanged.connect(self._draw_m37_preview)
+        self.fixM37Button.clicked.connect(self.confirm_m37_placement)
+        self.cancelM37Button.clicked.connect(self.cancel_m37_placement)
+        self._m37_idle_help = self.conglomerateHelp.text()
+        self.m37PlacementControls.hide()
         self.exportM37CsvButton.clicked.connect(self.export_m37_points_to_csv)
-        self.classifySpeciesCongButton.clicked.connect(self.classify_species_in_last_conglomerate)
-        self.exportSpeciesCsvButton.clicked.connect(self.export_species_points_to_csv)
         self.refresh_raster_combos()
 
     def refresh_raster_combos(self):
@@ -261,7 +230,7 @@ class MainWindow(QMainWindow):
         Correção aplicada:
         - prioriza automaticamente rasters RGB com 3 ou mais bandas;
         - evita selecionar por padrão camadas cinza como "Ortofoto — Banda 1 (Gray)";
-        - prioriza nomes com "RGB" e "Processamento RGB" para a classificação de espécies.
+        - prioriza nomes com "RGB" e "Processamento RGB" para o recorte das copas.
         """
 
         self.mdsComboBox.clear()
@@ -379,7 +348,7 @@ class MainWindow(QMainWindow):
                     "Leitura com transformação horizontal de coordenadas: "
                     f"projeto={crs_label(project.crs())}; MDS={crs_label(mds.crs())}; "
                     f"MDT={crs_label(mdt.crs())}. Os rasters não foram reamostrados.",
-                    "Fazenda Classifier", Qgis.Info)
+                    "Fazenda Classifier", Qgis.MessageLevel.Info)
         return mds, mdt
 
     def validate_ortho_layer(self):
@@ -389,7 +358,7 @@ class MainWindow(QMainWindow):
         Correção aplicada:
         - se a camada selecionada tiver menos de 3 bandas, tenta trocar automaticamente
           para a melhor camada RGB disponível;
-        - se não houver camada RGB, interrompe a classificação com aviso claro.
+        - se não houver camada RGB, informa a ausência de RGB para o recorte da copa.
         """
 
         ortho_layer = self.get_selected_raster_layer(self.orthoComboBox)
@@ -460,33 +429,131 @@ class MainWindow(QMainWindow):
         if mds_layer is None or mdt_layer is None:
             return
 
-        self.iface.mapCanvas().setMapTool(self.m37_tool)
-
-        self.m37StatusLabel.setText(
-            "Parcelas: clique no mapa para criar o centro da parcela."
-        )
-
-        QMessageBox.information(
-            self,
-            "Gerar parcela",
-            "Clique no mapa para definir o centro da parcela de 1 hectare.",
-        )
+        canvas = self.iface.mapCanvas()
+        if canvas.mapTool() is not self.m37_tool:
+            self._m37_previous_tool = canvas.mapTool()
+            canvas.setMapTool(self.m37_tool)
+        self._m37_crs = QgsProject.instance().crs()
+        self._m37_center = None
+        self._m37_preview.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
+        self.m37AzimuthSpin.setValue(0.0)
+        self._set_m37_mode(None)
+        self.generateM37Button.hide()
+        self.m37PlacementControls.show()
+        self.conglomerateHelp.setText("Clique no mapa para marcar o centro da parcela de 1 ha.")
+        canvas.setFocus()
 
     def handle_m37_click(self, point, button):
-        if button != Qt.LeftButton:
+        if button == Qt.MouseButton.RightButton:
+            self.cancel_m37_placement()
+            return
+        if button != Qt.MouseButton.LeftButton or self._m37_crs is None:
+            return
+        if self._m37_center is not None:
+            if self._m37_mode is not None:
+                self.handle_m37_move(point)
+                self._set_m37_mode(None)
+            return
+        try:
+            self._m37_center = self._m37_work_point(point)
+        except SpatialError as error:
+            self._leave_m37_placement()
+            self.m37StatusLabel.setText(str(error))
+            return
+        self._set_m37_mode("rotate")
+        self._draw_m37_preview()
+
+    def _set_m37_mode(self, mode):
+        self._m37_mode = mode
+        has_center = self._m37_center is not None
+        for control in (self.moveM37Button, self.rotateM37Button, self.m37AzimuthSpin, self.fixM37Button):
+            control.setEnabled(has_center)
+        self.moveM37Button.setChecked(mode == "move")
+        self.rotateM37Button.setChecked(mode == "rotate")
+        if has_center:
+            if mode == "move":
+                self.m37AzimuthSpin.interpretText()
+            instructions = {
+                "move": "Mova o cursor e clique no novo centro da parcela.",
+                "rotate": "Mova o cursor para girar e clique no mapa para definir o azimute.",
+                None: "Use Mover ou Girar para ajustar a prévia. Clique em Fixar parcela para gravar.",
+            }
+            self.conglomerateHelp.setText(instructions[mode])
+
+    def _m37_work_point(self, point):
+        project = QgsProject.instance()
+        if project.crs() != self._m37_crs:
+            raise SpatialError("O SRC do projeto mudou. Inicie novamente o posicionamento da parcela.")
+        canvas_crs = self.iface.mapCanvas().mapSettings().destinationCrs()
+        return transform_point(point, canvas_crs, self._m37_crs, project)
+
+    def handle_m37_move(self, point):
+        center = self._m37_center
+        if center is None or self._m37_mode is None:
+            return
+        try:
+            target = self._m37_work_point(point)
+        except SpatialError as error:
+            self._leave_m37_placement()
+            self.m37StatusLabel.setText(str(error))
+            return
+        if self._m37_mode == "move":
+            self._m37_center = target
+            self._draw_m37_preview()
+            return
+        east, north = target.x() - center.x(), target.y() - center.y()
+        if east or north:
+            self.m37AzimuthSpin.setValue(math.degrees(math.atan2(east, north)) % 360.0)
+
+    def _draw_m37_preview(self):
+        if self._m37_center is not None:
+            frame = MetricFrame(self._m37_center, self.m37AzimuthSpin.value())
+            geometry = QgsGeometry.fromPolygonXY([frame.ring(PARCEL_SIDE_M, PARCEL_SIDE_M)])
+            self._m37_preview.setToGeometry(geometry, self._m37_crs)
+
+    def _clear_m37_preview(self):
+        self._m37_center = None
+        self._set_m37_mode(None)
+        self._m37_crs = None
+        self._m37_previous_tool = None
+        self._m37_preview.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
+        self.m37PlacementControls.hide()
+        self.generateM37Button.show()
+        self.conglomerateHelp.setText(self._m37_idle_help)
+        self.m37StatusLabel.setText("Posicionamento encerrado.")
+
+    def _leave_m37_placement(self):
+        canvas = self.iface.mapCanvas()
+        if canvas.mapTool() is self.m37_tool:
+            if self._m37_previous_tool is None:
+                canvas.unsetMapTool(self.m37_tool)
+            else:
+                canvas.setMapTool(self._m37_previous_tool)
+
+    def cancel_m37_placement(self):
+        self._leave_m37_placement()
+        self.m37StatusLabel.setText("Posicionamento cancelado.")
+
+    def confirm_m37_placement(self):
+        center = self._m37_center
+        if center is None:
+            return
+        if QgsProject.instance().crs() != self._m37_crs:
+            self._leave_m37_placement()
+            self.m37StatusLabel.setText("O SRC do projeto mudou. Inicie novamente o posicionamento.")
             return
         mds, mdt = self.validate_mds_mdt_layers()
         if mds is None or mdt is None:
             return
+        self.m37AzimuthSpin.interpretText()
+        azimuth = self.m37AzimuthSpin.value()
+        self._leave_m37_placement()
         names = ("conglomerados_M37", "subparcelas_1x10_M37", "pontos_altura_M37")
         before = {name: {f.id() for f in layer.getFeatures()} if layer else set()
                   for name in names for layer in [self.get_vector_layer_by_name(name)]}
         previous_ua = self.last_ua_id
         try:
-            project = QgsProject.instance()
-            point = transform_point(point, self.iface.mapCanvas().mapSettings().destinationCrs(),
-                                    project.crs(), project)
-            self.create_m37_conglomerate(point, mds, mdt)
+            self.create_m37_conglomerate(center, mds, mdt, azimuth=azimuth)
         except Exception as error:
             for name in names:
                 layer = self.get_vector_layer_by_name(name)
@@ -496,8 +563,8 @@ class MainWindow(QMainWindow):
                         layer.dataProvider().deleteFeatures(added)
                         layer.updateExtents()
             self.last_ua_id = previous_ua
-            self.m37StatusLabel.setText("Parcelas: operação interrompida; confira o SRC e os rasters.")
-            QgsMessageLog.logMessage(traceback.format_exc(), "Fazenda Classifier", Qgis.Critical)
+            self.m37StatusLabel.setText("Operação interrompida. Confira o SRC e os rasters.")
+            QgsMessageLog.logMessage(traceback.format_exc(), "Fazenda Classifier", Qgis.MessageLevel.Critical)
             QMessageBox.warning(self, "Parcela não gerada", str(error))
 
     # =========================================================
@@ -585,6 +652,10 @@ class MainWindow(QMainWindow):
 
         for output in (conglomerados, subparcelas, pontos):
             output.setCrs(QgsProject.instance().crs())
+        if conglomerados.fields().indexFromName("azimute_graus") < 0:
+            if not conglomerados.dataProvider().addAttributes([QgsField("azimute_graus", QVariant.Double)]):
+                raise SpatialError("Não foi possível registrar o azimute na camada de parcelas.")
+            conglomerados.updateFields()
         self._ensure_spatial_fields(pontos)
         return conglomerados, subparcelas, pontos
 
@@ -597,76 +668,43 @@ class MainWindow(QMainWindow):
     # =========================================================
 
     def get_max_mds_in_sampling_window(self, mds_layer, mdt_layer, center_point,
-                                       window_width_m=1.0, window_length_m=10.0):
+                                       window_width_m=1.0, window_length_m=10.0, *, azimuth=0.0):
         return maximum_height_window(self._raster_sampler(mds_layer),
-            self._raster_sampler(mdt_layer), center_point, window_width_m, window_length_m)
+            self._raster_sampler(mdt_layer), center_point, window_width_m, window_length_m,
+            azimuth=azimuth)
 
-    def create_m37_conglomerate(self, center_point, mds_layer, mdt_layer):
+    def create_m37_conglomerate(self, center_point, mds_layer, mdt_layer, *, azimuth=0.0):
+        frame = MetricFrame(center_point, azimuth)
         conglomerados, subparcelas, pontos = self.get_or_create_m37_layers()
 
         ua_id = self.generate_next_ua_id(conglomerados)
-        self.last_ua_id = ua_id
-
-        x_c = center_point.x()
-        y_c = center_point.y()
-
-        half_size = 50.0
-        x_min = x_c - half_size
-        x_max = x_c + half_size
-        y_min = y_c - half_size
-        y_max = y_c + half_size
-
+        half_side = PARCEL_SIDE_M / 2
         data_criacao = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        square_points = [
-            QgsPointXY(x_min, y_min),
-            QgsPointXY(x_max, y_min),
-            QgsPointXY(x_max, y_max),
-            QgsPointXY(x_min, y_max),
-            QgsPointXY(x_min, y_min),
-        ]
-
         feat_cong = QgsFeature(conglomerados.fields())
-        feat_cong.setGeometry(QgsGeometry.fromPolygonXY([square_points]))
-        feat_cong.setAttributes([
-            ua_id,
-            x_c,
-            y_c,
-            10000.0,
-            1.0,
-            data_criacao,
-        ])
+        feat_cong.setGeometry(QgsGeometry.fromPolygonXY([frame.ring(PARCEL_SIDE_M, PARCEL_SIDE_M)]))
+        for field, value in (
+            ("UA", ua_id), ("x_centro", frame.x), ("y_centro", frame.y),
+            ("area_m2", PARCEL_SIDE_M ** 2), ("area_ha", PARCEL_SIDE_M ** 2 / 10000),
+            ("data_criacao", data_criacao), ("azimute_graus", frame.azimuth),
+        ):
+            feat_cong[field] = value
 
-        conglomerados.dataProvider().addFeature(feat_cong)
-        conglomerados.updateExtents()
-
-        total_points = 0
         valid_points = 0
         invalid_points = 0
         ponto_global_id = 1
-
-        for i in range(10):
-            sub_x_min = x_min + i * 10.0
-            x_ponto = sub_x_min + 5.0
-
-            for j in range(10):
-                y_ponto = y_min + 5.0 + j * 10.0
-                point_xy = QgsPointXY(x_ponto, y_ponto)
-
-                # Draw the same 1 × 10 m window used by the height sampler.
-                # The original 100 sample centers and raster reads are retained.
+        sub_features, point_features = [], []
+        for i in range(SAMPLING_POINTS_PER_SIDE):
+            east = (i + 0.5) * SAMPLING_SPACING_M - half_side
+            for j in range(SAMPLING_POINTS_PER_SIDE):
+                north = (j + 0.5) * SAMPLING_SPACING_M - half_side
+                point_xy = frame.point(east, north)
                 sub_id = f"SP_{ponto_global_id:03d}"
-                sub_points = [
-                    QgsPointXY(x_ponto - 0.5, y_ponto - 5.0),
-                    QgsPointXY(x_ponto + 0.5, y_ponto - 5.0),
-                    QgsPointXY(x_ponto + 0.5, y_ponto + 5.0),
-                    QgsPointXY(x_ponto - 0.5, y_ponto + 5.0),
-                    QgsPointXY(x_ponto - 0.5, y_ponto - 5.0),
-                ]
+                sub_points = frame.ring(1.0, 10.0, east, north)
                 feat_sub = QgsFeature(subparcelas.fields())
                 feat_sub.setGeometry(QgsGeometry.fromPolygonXY([sub_points]))
                 feat_sub.setAttributes([ua_id, sub_id, 1.0, 10.0, 10.0])
-                subparcelas.dataProvider().addFeature(feat_sub)
+                sub_features.append(feat_sub)
 
                 resultado_janela = self.get_max_mds_in_sampling_window(
                     mds_layer=mds_layer,
@@ -674,6 +712,7 @@ class MainWindow(QMainWindow):
                     center_point=point_xy,
                     window_width_m=1.0,
                     window_length_m=10.0,
+                    azimuth=frame.azimuth,
                 )
 
                 status = resultado_janela["status"]
@@ -689,8 +728,8 @@ class MainWindow(QMainWindow):
                     ua_id,
                     sub_id,
                     ponto_global_id,
-                    x_ponto,
-                    y_ponto,
+                    point_xy.x(),
+                    point_xy.y(),
                     resultado_janela["x_mds_max"],
                     resultado_janela["y_mds_max"],
                     resultado_janela["mds_max"],
@@ -705,18 +744,25 @@ class MainWindow(QMainWindow):
                     crs_label(mdt_layer.crs()),
                     "maximo_centros_pixels_MDS_janela_metrica",
                 ])
-                pontos.dataProvider().addFeature(feat_ponto)
+                point_features.append(feat_ponto)
 
                 ponto_global_id += 1
-                total_points += 1
 
-        subparcelas.updateExtents()
-        pontos.updateExtents()
+        for layer, features in (
+            (conglomerados, [feat_cong]), (subparcelas, sub_features), (pontos, point_features),
+        ):
+            success, written = layer.dataProvider().addFeatures(features)
+            if not success or len(written) != len(features):
+                raise SpatialError(f"Falha ao gravar a parcela na camada {layer.name()}.")
+            layer.updateExtents()
 
+        self.last_ua_id = ua_id
+        total_points = len(point_features)
         self.iface.mapCanvas().refresh()
 
+        angle_label = f"{frame.azimuth:.2f}".replace(".", ",")
         self.m37StatusLabel.setText(
-            f"Parcelas: {ua_id} criado | pontos: {total_points} | "
+            f"Parcela {ua_id} | azimute: {angle_label}° | pontos: {total_points} | "
             f"válidos: {valid_points} | inválidos: {invalid_points}"
         )
 
@@ -726,6 +772,7 @@ class MainWindow(QMainWindow):
             (
                 f"Parcela {ua_id} criada com sucesso.\n\n"
                 f"Área: 100 m × 100 m = 1 ha\n"
+                f"Azimute: {angle_label}°\n"
                 f"Subparcelas: 100, com 1 m × 10 m cada\n"
                 f"Pontos totais: {total_points}\n"
                 f"Pontos válidos: {valid_points}\n"
@@ -765,294 +812,6 @@ class MainWindow(QMainWindow):
 
         return selected
 
-    def save_species_patch(
-        self,
-        ortho_layer,
-        center_point,
-        output_path,
-        patch_size_m=8.0,
-        output_pixels=128,
-    ):
-        """
-        Recorta um patch da ortofoto usando a renderização do QGIS.
-
-        Correção aplicada:
-        - salva PNG, não GeoTIFF;
-        - usa o CRS do projeto/canvas, pois os pontos da parcela estão nesse CRS;
-        - renderiza somente a camada RGB selecionada;
-        - evita selecionar camada cinza ao validar previamente a ortofoto.
-        """
-
-        output_path = os.path.splitext(output_path)[0] + ".png"
-
-        half = patch_size_m / 2.0
-
-        extent = QgsRectangle(
-            center_point.x() - half,
-            center_point.y() - half,
-            center_point.x() + half,
-            center_point.y() + half,
-        )
-
-        image = QImage(
-            int(output_pixels),
-            int(output_pixels),
-            QImage.Format_RGB32,
-        )
-        image.fill(QColor(255, 255, 255))
-
-        settings = QgsMapSettings()
-        settings.setLayers([ortho_layer])
-        settings.setExtent(extent)
-        settings.setOutputSize(image.size())
-        settings.setBackgroundColor(QColor(255, 255, 255))
-
-        # Ponto crítico: usa o CRS do projeto/canvas, não apenas o CRS isolado da camada.
-        settings.setDestinationCrs(QgsProject.instance().crs())
-        settings.setTransformContext(QgsProject.instance().transformContext())
-
-        painter = QPainter(image)
-
-        try:
-            job = QgsMapRendererCustomPainterJob(settings, painter)
-            job.start()
-            job.waitForFinished()
-        finally:
-            painter.end()
-
-        saved = image.save(output_path, "PNG")
-
-        if not saved or not os.path.exists(output_path):
-            raise RuntimeError(
-                f"Patch PNG não foi criado corretamente: {output_path}"
-            )
-
-        pil_img = Image.open(output_path).convert("RGB")
-        arr = np.array(pil_img)
-
-        # Evita aceitar patch completamente branco/preto/transparente.
-        if arr.max() == arr.min():
-            raise RuntimeError(
-                "Patch gerado sem variação visual. "
-                "Verifique se a camada selecionada em 'Camada de ortofoto RGB' "
-                "é uma ortofoto RGB com 3 bandas e se a parcela está sobre ela. "
-                f"Camada selecionada: {ortho_layer.name()} | Arquivo: {output_path}"
-            )
-
-        return output_path
-
-    def classify_species_in_last_conglomerate(self):
-        """
-        Cria uma grade 4 m × 4 m dentro do última parcela,
-        gera 625 patches de ortofoto, aplica a CNN Fazenda_LeNet
-        e grava os pontos classificados em pontos_especies_M37.
-
-        Publica a nova camada apenas depois de completar todas as amostras.
-        """
-
-        if not self._ensure_model():
-            return
-        ortho_layer = self.validate_ortho_layer()
-
-        if ortho_layer is None:
-            return
-
-        cong_feat = self.get_last_conglomerate_feature()
-
-        if cong_feat is None:
-            QMessageBox.warning(
-                self,
-                "Erro",
-                "Nenhuma parcela foi encontrada. "
-                "Gere primeiro a parcela."
-            )
-            return
-
-        try:
-            ua_id = require_ua_id(cong_feat["UA"])
-        except (ValueError, KeyError) as error:
-            QMessageBox.warning(self, "Parcela inválida", str(error))
-            return
-        geom = cong_feat.geometry()
-
-        if geom is None or geom.isEmpty():
-            QMessageBox.warning(
-                self,
-                "Erro",
-                "A parcela selecionada não possui geometria válida."
-            )
-            return
-
-        bbox = geom.boundingBox()
-
-        x_min = bbox.xMinimum()
-        y_min = bbox.yMinimum()
-
-        grid_size_m = 4.0
-        patch_size_m = 8.0
-        n_linhas = 25
-        n_colunas = 25
-
-        try:
-            self._check_existing_output_crs()
-            previous_layer = self.get_vector_layer_by_name("pontos_especies_M37")
-            validate_previous_species(previous_layer, QgsProject.instance().crs())
-            species_layer = create_species_layer(QgsProject.instance().crs())
-            temp_dir = create_species_workspace(ua_id)
-        except (SpatialError, ValueError, OSError) as error:
-            QMessageBox.warning(self, "Classificação interrompida", str(error))
-            return
-        new_features = []
-
-        total = 0
-        processadas = 0
-        rejeitadas = 0
-        erro_processamento = 0
-
-        contagem_classes = {
-            "Araucaria angustifolia": 0,
-            "Cedrela fissilis": 0,
-            "Ocotea porosa": 0,
-            "espécie não identificada": 0,
-        }
-
-        QMessageBox.information(
-            self,
-            "Classificação de espécies",
-            (
-                f"Iniciando classificação de espécies na parcela {ua_id}.\n\n"
-                f"Grade: 4 m × 4 m\n"
-                f"Amostras esperadas: 625\n"
-                f"Patch: {patch_size_m} m × {patch_size_m} m\n"
-                f"Limiar: 0.60\n"
-                "Os resultados anteriores serão preservados até a conclusão.\n\n"
-                f"O processamento pode levar alguns minutos."
-            )
-        )
-
-        amostra_id = 1
-
-        for linha in range(n_linhas):
-            for coluna in range(n_colunas):
-
-                x = x_min + (grid_size_m / 2.0) + coluna * grid_size_m
-                y = y_min + (grid_size_m / 2.0) + linha * grid_size_m
-
-                point_xy = QgsPointXY(float(x), float(y))
-                point_geom = QgsGeometry.fromPointXY(point_xy)
-
-                if not geom.contains(point_geom):
-                    continue
-
-                patch_name = f"L{linha + 1:02d}_C{coluna + 1:02d}.png"
-                patch_path = os.path.join(temp_dir, patch_name)
-
-                try:
-                    patch_path = self.save_species_patch(
-                        ortho_layer=ortho_layer,
-                        center_point=point_xy,
-                        output_path=patch_path,
-                        patch_size_m=patch_size_m,
-                        output_pixels=128,
-                    )
-
-                    if not os.path.exists(patch_path):
-                        raise RuntimeError(f"Patch não foi criado: {patch_path}")
-
-                    resultado = self.model.classify_image(patch_path)
-
-                    predicted_class = resultado.get("predicted_class")
-                    final_class = resultado.get("final_class")
-                    confidence = resultado.get("confidence")
-                    threshold = resultado.get("threshold")
-                    status = resultado.get("status")
-                    prob_aa = resultado.get("prob_Araucaria_angustifolia")
-                    prob_cf = resultado.get("prob_Cedrela_fissilis")
-                    prob_op = resultado.get("prob_Ocotea_porosa")
-
-                    if final_class == "espécie não identificada":
-                        rejeitadas += 1
-
-                    if final_class in contagem_classes:
-                        contagem_classes[final_class] += 1
-
-                    processadas += 1
-
-                except Exception as error:
-                    self.speciesStatusLabel.setText(
-                        f"Espécies: {ua_id} | execução interrompida; resultados anteriores preservados."
-                    )
-                    QMessageBox.warning(self, "Classificação interrompida",
-                        f"Falha na amostra {amostra_id}: {error}\n\n"
-                        "Nenhuma classificação anterior foi substituída. "
-                        f"Recortes desta tentativa: {temp_dir}")
-                    return
-
-                feat = QgsFeature(species_layer.fields())
-                feat.setGeometry(point_geom)
-                feat.setAttributes([
-                    ua_id,
-                    amostra_id,
-                    linha + 1,
-                    coluna + 1,
-                    float(x),
-                    float(y),
-                    grid_size_m,
-                    patch_size_m,
-                    predicted_class,
-                    final_class,
-                    confidence,
-                    threshold,
-                    status,
-                    prob_aa,
-                    prob_cf,
-                    prob_op,
-                    patch_path,
-                    crs_label(species_layer.crs()),
-                    crs_label(ortho_layer.crs()),
-                ])
-
-                new_features.append(feat)
-
-                amostra_id += 1
-                total += 1
-
-        try:
-            registros_substituidos = prepare_species_replacement(
-                previous_layer, species_layer, ua_id, new_features)
-            publish_species_replacement(QgsProject.instance(), previous_layer, species_layer)
-        except Exception as error:
-            QMessageBox.warning(self, "Classificação não publicada",
-                f"{error}\n\nA classificação anterior não foi sobrescrita.")
-            return
-        self.iface.mapCanvas().refresh()
-
-        self.speciesStatusLabel.setText(
-            f"Espécies: {ua_id} | amostras: {total} | "
-            f"processadas: {processadas} | "
-            f"rejeitadas: {rejeitadas} | erros: {erro_processamento}"
-        )
-
-        mensagem = (
-            f"Classificação de espécies concluída para {ua_id}.\n\n"
-            f"Amostras classificadas: {total}\n"
-            f"Processadas: {processadas}\n"
-            f"Rejeitadas como espécie não identificada: {rejeitadas}\n"
-            f"Erros de processamento: {erro_processamento}\n"
-            f"Registros anteriores substituídos desta UA: {registros_substituidos}\n\n"
-            f"Resumo por classe final:\n"
-            f"Araucaria angustifolia: {contagem_classes['Araucaria angustifolia']}\n"
-            f"Cedrela fissilis: {contagem_classes['Cedrela fissilis']}\n"
-            f"Ocotea porosa: {contagem_classes['Ocotea porosa']}\n"
-            f"Espécie não identificada: {contagem_classes['espécie não identificada']}\n\n"
-            f"Os patches temporários foram salvos em:\n{temp_dir}"
-        )
-
-        QMessageBox.information(
-            self,
-            "Classificação concluída",
-            mensagem
-        )
 
     # =========================================================
     # EXPORTAÇÃO CSV — ALTURA
@@ -1095,28 +854,6 @@ class MainWindow(QMainWindow):
         except Exception as error:
             QMessageBox.warning(self, "Exportação não concluída", str(error))
 
-    def export_species_points_to_csv(self):
-        try:
-            layer = self.get_vector_layer_by_name("pontos_especies_M37")
-            if layer is None or layer.featureCount() == 0:
-                raise ValueError("Nenhuma classificação de grade foi encontrada.")
-            rows = prepare_species_diagnostic_rows(self._rows_from_vector_layer(layer),
-                                                   crs_label(layer.crs()))
-            filename, _ = QFileDialog.getSaveFileName(
-                self, "Salvar diagnóstico da classificação em grade",
-                os.path.join(os.path.expanduser("~"), "classificacao_grade_diagnostico.csv"),
-                "CSV de diagnóstico (*.csv)")
-            if not filename:
-                return
-            if not filename.lower().endswith(".csv"):
-                filename += ".csv"
-            count = write_csv(filename, SPECIES_DIAGNOSTIC_FIELDS, rows)
-            QMessageBox.information(self, "CSV exportado",
-                f"{count} recortes RGB exportados para diagnóstico. "
-                "Esta grade não é um inventário de árvores e não contém áreas de copas.\n"
-                f"{filename}")
-        except Exception as error:
-            QMessageBox.warning(self, "Exportação não concluída", str(error))
 
     # =========================================================
     # FLUXO ANTIGO — ÁRVORE INDIVIDUAL
@@ -1159,18 +896,13 @@ class MainWindow(QMainWindow):
         self._queued_draft_key = None
         self._capture_active = False
         self.capture_points = []
-        self.last_classification_result = None
-        self.classified_species = None
-        self.rubber_band.reset(QgsWkbTypes.PolygonGeometry)
+        self.rubber_band.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
         self.treeIdLineEdit.clear()
         for label in (self.heightLabel, self.crownAreaLabel, self.crownDiameterLabel):
             label.setText("—")
-        self._update_tree_classification_label()
 
     def add_another_tree(self):
         try:
-            if self._classification_pending:
-                raise ValueError("Aguarde a classificação desta árvore antes de continuar.")
             if self._tree_record is not None:
                 self._queue_current_tree()
             elif not len(self._tree_batch):
@@ -1184,8 +916,6 @@ class MainWindow(QMainWindow):
 
     def finalize_tree_list(self):
         try:
-            if self._classification_pending:
-                raise ValueError("Aguarde a classificação desta árvore antes de finalizar.")
             if self._tree_record is not None:
                 self._queue_current_tree()
             self._tree_batch.finalize()
@@ -1204,16 +934,12 @@ class MainWindow(QMainWindow):
         self._refresh_tree_batch_ui()
 
     def new_tree_list(self):
-        if self._classification_pending:
-            QMessageBox.information(self, "Classificação em andamento",
-                "Aguarde a classificação atual antes de iniciar outra lista.")
-            return
         if len(self._tree_batch) or self._has_unqueued_crown() or self.capture_points:
             answer = QMessageBox.question(self, "Iniciar nova lista?",
                 "A lista atual será retirada do painel. Exporte o CSV antes de continuar se quiser guardá-la. "
                 "Os arquivos já exportados serão preservados. Iniciar uma nova lista?",
-                QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
-            if answer != QMessageBox.Yes:
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
+            if answer != QMessageBox.StandardButton.Yes:
                 return
         self._tree_batch.clear()
         self._reset_tree_draft()
@@ -1221,16 +947,15 @@ class MainWindow(QMainWindow):
 
     def _refresh_tree_batch_buttons(self):
         record = self._tree_record
-        busy = self._classification_pending
         complete = record is not None and record.area is not None and not self._capture_active
         ready = complete or (record is None and bool(len(self._tree_batch)))
-        self.selectAreaButton.setEnabled(not busy and not self._has_unqueued_crown() and not self._capture_active)
+        self.selectAreaButton.setEnabled(not self._has_unqueued_crown() and not self._capture_active)
         self.delimitTreeButton.setEnabled(record is not None and not self._draft_queued)
         self.finishDelimitationButton.setEnabled(self._capture_active)
-        self.addTreeButton.setEnabled(ready and not busy)
-        self.finalizeTreesButton.setEnabled(ready and not busy and not self._tree_batch.finalized)
+        self.addTreeButton.setEnabled(ready)
+        self.finalizeTreesButton.setEnabled(ready and not self._tree_batch.finalized)
         self.removeTreeButton.setEnabled(bool(self.treeListTable.selectionModel().selectedRows()))
-        self.exportButton.setEnabled(self._tree_batch.finalized and not busy
+        self.exportButton.setEnabled(self._tree_batch.finalized
                                      and (record is None or self._draft_queued))
         self.treeIdLineEdit.setReadOnly(self._draft_queued)
         self.treeUaLineEdit.setReadOnly(self._draft_queued)
@@ -1239,8 +964,7 @@ class MainWindow(QMainWindow):
         records = self._tree_batch.records
         self.treeListTable.setRowCount(len(records))
         for row, record in enumerate(records):
-            species = (record.classification or {}).get("final_class") or "Sem classificação"
-            values = (record.arvore_id, record.ua, species,
+            values = (record.arvore_id, record.ua,
                       "—" if record.height is None else f"{record.height:.2f}".replace(".", ","),
                       f"{record.area:.2f}".replace(".", ","))
             for column, value in enumerate(values):
@@ -1252,8 +976,6 @@ class MainWindow(QMainWindow):
         self.treeBatchCountLabel.setText(f"{count} {noun} na lista")
         if self._tree_batch.finalized:
             hint = "Lista finalizada. Exporte o CSV ou adicione outra árvore."
-        elif self._classification_pending:
-            hint = "Aguarde a classificação para guardar esta árvore na lista."
         elif self._has_unqueued_crown():
             hint = "Copa concluída. Adicione outra árvore ou finalize a lista para exportar."
         else:
@@ -1263,11 +985,7 @@ class MainWindow(QMainWindow):
         self._refresh_tree_batch_buttons()
 
     def select_area(self, point, button=None):
-        if button is not None and button != Qt.LeftButton:
-            return
-        if self._classification_pending:
-            QMessageBox.information(self, "Classificação em andamento",
-                "Aguarde a classificação atual antes de selecionar outra árvore.")
+        if button is not None and button != Qt.MouseButton.LeftButton:
             return
         if self._has_unqueued_crown():
             QMessageBox.information(self, "Copa concluída",
@@ -1282,10 +1000,11 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Seleção interrompida", str(error))
             return
 
-        # Every valid new selection gets fresh measurements and classification state.
+        # Every valid new selection gets fresh measurements.
         self._tree_request += 1
         self._tree_crs = project.crs()
         self._tree_record = TreeMeasurement(point.x(), point.y(), crs_label(self._tree_crs))
+        self._tree_rgb_layer = None
         self._draft_queued = False
         self._queued_draft_key = None
         self._tree_batch.resume()
@@ -1293,11 +1012,9 @@ class MainWindow(QMainWindow):
             self.treeIdLineEdit.setText(self._tree_record.arvore_id)
         if hasattr(self, "treeUaLineEdit"):
             self._tree_record.ua = self.treeUaLineEdit.text().strip()
-        self.classified_species = None
-        self.last_classification_result = None
         self._capture_active = False
         self.capture_points = []
-        self.rubber_band.reset(QgsWkbTypes.PolygonGeometry)
+        self.rubber_band.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
         self.crownDiameterLabel.setText("—")
         self.crownAreaLabel.setText("—")
         self.exportButton.setEnabled(False)
@@ -1316,52 +1033,46 @@ class MainWindow(QMainWindow):
                 QMessageBox.warning(self, "Altura não calculada", str(error))
         height = self._tree_record.height
         self.heightLabel.setText(f"{height:.2f} m".replace(".", ",") if height is not None else "—")
-        self._update_tree_classification_label()
         self._refresh_tree_batch_ui()
 
-        # Use the chosen RGB even when a vector output is the active QGIS layer.
-        layer = self.validate_ortho_layer()
-        if layer is None:
-            self._tree_record.classification_detail = "Ortofoto RGB indisponível."
-            return
-        self._tree_record.crs_rgb = crs_label(layer.crs())
-        if not self._ensure_model():
-            self._tree_record.classification_detail = "Modelo não selecionado ou indisponível."
-            return
+        # RGB is optional for measurements; keep it for native crown TIFF export.
+        layer = self.get_selected_raster_layer(self.orthoComboBox)
+        if layer is not None:
+            layer = self.validate_ortho_layer()
+        if layer is not None and layer.isValid() and layer.crs().isValid():
+            self._tree_record.crs_rgb = crs_label(layer.crs())
+            self._tree_rgb_layer = layer
+
+    def save_crown_subset(self, geometry):
+        """Archive the delimited crown at the original raster resolution."""
+        from qgis.core import QgsCoordinateTransform, QgsProviderRegistry
+
+        layer = self._tree_rgb_layer
+        if layer is None or not layer.isValid():
+            raise ValueError("A ortofoto RGB da árvore não está disponível. Selecione a árvore novamente.")
+        native = QgsGeometry(geometry)
+        if self._tree_crs != layer.crs():
+            result = native.transform(QgsCoordinateTransform(
+                self._tree_crs, layer.crs(), QgsProject.instance()))
+            if result != 0:
+                raise ValueError("Não foi possível transformar a copa para o SRC da ortofoto.")
+        if native.isEmpty() or not native.isGeosValid():
+            raise ValueError("O polígono da copa é inválido no SRC da ortofoto.")
+        uri = QgsProviderRegistry.instance().decodeUri(layer.providerType(), layer.source())
+        source = uri.get("path") or layer.source()
+        # A new name for every completed delineation also preserves earlier
+        # files if the same tree's crown is redrawn in this temporary workspace.
+        descriptor, filename = tempfile.mkstemp(
+            prefix=f"arvore_{self._tree_request}_copa_", suffix=".tif", dir=self.get_temp_folder())
+        os.close(descriptor)
         try:
-            image_path = os.path.join(self.get_temp_folder(), f"arvore_{self._tree_request}.tif")
-            if not self.save_raster_subset(layer, point, image_path):
-                raise RuntimeError("Não foi possível gerar o recorte RGB.")
-            self._tree_record.patch_path = os.path.splitext(image_path)[0] + ".png"
-            self._tree_record.begin_classification()
-            self._classification_pending = True
-            self._update_tree_classification_label()
-            self._refresh_tree_batch_ui()
-            self.executor.submit(self.auto_convert_and_classify, image_path,
-                                 self._tree_request, self.model)
-        except Exception as error:
-            self._show_classification_error((self._tree_request, str(error)))
-
-
-    def save_raster_subset(self, layer, point, output_path):
-        project = QgsProject.instance()
-        native = transform_point(point, self._tree_crs, layer.crs(), project)
-        if not layer.extent().contains(native):
-            raise SpatialError("O ponto selecionado está fora da ortofoto RGB.")
-        # Preserve the original crop: 256 native pixels, output at 128 x 128.
-        radius_x = 128 * abs(layer.rasterUnitsPerPixelX())
-        radius_y = 128 * abs(layer.rasterUnitsPerPixelY())
-        extent = QgsRectangle(native.x()-radius_x, native.y()-radius_y,
-                              native.x()+radius_x, native.y()+radius_y)
-        pipe = QgsRasterPipe()
-        if not pipe.set(layer.dataProvider().clone()):
-            raise RuntimeError("Não foi possível clonar o raster RGB.")
-        writer = QgsRasterFileWriter(output_path)
-        writer.setOutputFormat("GTiff")
-        result = writer.writeRaster(pipe, 128, 128, extent, layer.crs(), project.transformContext())
-        if result != QgsRasterFileWriter.NoError:
-            raise RuntimeError(f"Erro de gravação do recorte RGB: {result}")
-        return True
+            result = write_native_crown_tiff(source, native.asWkb(), filename,
+                raster_crs_wkt=layer.crs().toWkt(), tree_id=self._tree_record.arvore_id)
+        except Exception:
+            if os.path.isfile(filename):
+                os.unlink(filename)
+            raise
+        return result["path"]
 
 
     def get_layer_by_name(self, name):
@@ -1385,10 +1096,10 @@ class MainWindow(QMainWindow):
             return
         self.tool = QgsMapToolEmitPoint(self.iface.mapCanvas())
         self.tool.canvasClicked.connect(self.handle_point_click)
-        self.rubber_band.reset(QgsWkbTypes.PolygonGeometry)
+        self.rubber_band.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
         self.rubber_band.setStrokeColor(QColor(255, 0, 0))
         self.rubber_band.setFillColor(QColor(0, 0, 0, 0))
-        self.rubber_band.setLineStyle(Qt.SolidLine)
+        self.rubber_band.setLineStyle(Qt.PenStyle.SolidLine)
         self.rubber_band.setWidth(2)
         self.capture_points = []
         self._tree_record.clear_crown()
@@ -1401,9 +1112,9 @@ class MainWindow(QMainWindow):
 
 
     def handle_point_click(self, point, button):
-        if button == Qt.LeftButton:
+        if button == Qt.MouseButton.LeftButton:
             self.add_point_to_polygon(point)
-        elif button == Qt.RightButton:
+        elif button == Qt.MouseButton.RightButton:
             self.remove_last_point()
 
     def add_point_to_polygon(self, point):
@@ -1449,11 +1160,21 @@ class MainWindow(QMainWindow):
         except (SpatialError, ValueError) as error:
             QMessageBox.warning(self, "Delimitação não concluída", str(error))
             return
+        # A disk/RGB failure must not erase valid measurements.
+        try:
+            self._tree_record.crown_tiff_path = self.save_crown_subset(geometry)
+            self._tree_record.crown_tiff_detail = ""
+        except Exception as error:
+            self._tree_record.crown_tiff_path = ""
+            self._tree_record.crown_tiff_detail = str(error)
+            QgsMessageLog.logMessage(traceback.format_exc(), "Fazenda Classifier", Qgis.MessageLevel.Warning)
+            QMessageBox.warning(self, "Copa concluída — TIFF não salvo",
+                "As medidas da copa foram mantidas, mas a imagem temporária não foi salva.\n\n"
+                + str(error))
         self._capture_active = False
         self.crownDiameterLabel.setText(f"{self._tree_record.diameter:.2f} m".replace(".", ","))
         self.crownAreaLabel.setText(f"{self._tree_record.area:.2f} m²".replace(".", ","))
         self._refresh_tree_batch_ui()
-        self._update_tree_classification_label()
         canvas = self.iface.mapCanvas()
         if canvas.mapTool() is self.tool:
             canvas.unsetMapTool(self.tool)
@@ -1462,62 +1183,34 @@ class MainWindow(QMainWindow):
         self.activateWindow()
 
 
-    def save_results_to_csv(self, species=None, height=None, crown_diameter=None,
-                            crown_area=None, tree_coord=None):
+    def save_results_to_csv(self):
         # Compatibility entry point for the finalized list.
         return self.export_to_csv()
 
 
     def export_to_csv(self):
         try:
-            if not self._tree_batch.finalized or self._classification_pending:
+            if not self._tree_batch.finalized:
                 raise ValueError("Clique em 'Finalizar lista' antes de exportar o CSV das árvores.")
             records = self._tree_batch.records
-            default_path = os.path.join(os.path.expanduser("~"), "arvores_copas_fazenda_eco.csv")
+            default_path = os.path.join(os.path.expanduser("~"), "inventario_arvores_copas.csv")
             filename, selected_filter = QFileDialog.getSaveFileName(
-                self, "Salvar árvores — escolha o perfil CSV", default_path,
-                "Fazenda ECO — Árvore por copa (*.csv);;Relatório completo da árvore (*.csv)")
+                self, "Salvar inventário de árvores", default_path,
+                "Relatório completo da árvore (*.csv)")
             if not filename:
                 return
             if not filename.lower().endswith(".csv"):
                 filename += ".csv"
-            if selected_filter.startswith("Relatório completo"):
-                rows = [dict(record.as_csv_row(), arvore_id=record.arvore_id, UA=record.ua)
-                        for record in records]
-                count = write_csv(filename, ("arvore_id", "UA", *TREE_CSV_FIELDS), rows,
-                                  delimiter=",", decimal_comma=False)
-                message = "Relatório completo das árvores exportado, incluindo os estados da classificação."
-            else:
-                rows = prepare_tree_rows(records)
-                count = write_csv(filename, TREE_ECO_FIELDS, rows)
-                message = "No Fazenda ECO, selecione Árvore por copa."
-                if any(record.height is None for record in records):
-                    message += " Árvores sem altura válida terão somente DAP, sem carbono."
+            rows = [dict(record.as_csv_row(), arvore_id=record.arvore_id, UA=record.ua)
+                    for record in records]
+            count = write_csv(filename, ("arvore_id", "UA", *TREE_CSV_FIELDS), rows,
+                              delimiter=",", decimal_comma=False)
+            message = "Relatório das medições de árvores exportado."
             self._tree_batch.mark_exported()
             self._refresh_tree_batch_ui()
             QMessageBox.information(self, "CSV exportado", f"{count} árvore(s). {message}\n{filename}")
         except Exception as error:
             QMessageBox.warning(self, "Exportação não concluída", str(error))
-
-
-    def auto_convert_and_classify(self, tif_path, request_id, model):
-        try:
-            png_path = os.path.splitext(tif_path)[0] + ".png"
-            with Image.open(tif_path) as image:
-                image = image.convert("RGB").resize((128, 128))
-                values = np.asarray(image)
-                if values.max() == values.min():
-                    raise RuntimeError("Recorte RGB sem variação visual; confira a cobertura da ortofoto.")
-                image.save(png_path, "PNG")
-            result = model.classify_image(png_path)
-            if not self._closed:
-                self._classification_signals.finished.emit((request_id, result))
-        except Exception as error:
-            if not self._closed:
-                try:
-                    self._classification_signals.failed.emit((request_id, str(error)))
-                except RuntimeError:
-                    pass
 
 
     def _require_tree_crs(self):
@@ -1528,20 +1221,6 @@ class MainWindow(QMainWindow):
         if self._tree_crs != project_crs:
             raise SpatialError("O SRC do projeto mudou. Selecione a árvore novamente antes de continuar.")
 
-    def _update_tree_classification_label(self):
-        record = self._tree_record
-        if record is None or record.classification_status == "nao_executada":
-            label = "Classificação: não executada"
-        elif record.classification_status == "em_processamento":
-            label = "Classificação: em andamento"
-        elif record.classification is None:
-            label = "Classificação: erro de processamento"
-        else:
-            result = record.classification
-            confidence = format(result["confidence"], ".2%").replace(".", ",")
-            label = (f"Classe final: {result['final_class']} | "
-                     f"Confiança: {confidence}")
-        self.resultLabel.setText(label)
 
     def _raster_sampler(self, layer):
         project = QgsProject.instance()
@@ -1554,7 +1233,7 @@ class MainWindow(QMainWindow):
 
     def _check_existing_output_crs(self):
         project_crs = QgsProject.instance().crs()
-        for name in ("conglomerados_M37", "subparcelas_1x10_M37", "pontos_altura_M37", "pontos_especies_M37"):
+        for name in ("conglomerados_M37", "subparcelas_1x10_M37", "pontos_altura_M37"):
             layer = self.get_vector_layer_by_name(name)
             if layer is not None and layer.crs() != project_crs:
                 raise SpatialError(f"A saída RC4 {name} foi criada em outro SRC. "
@@ -1568,42 +1247,13 @@ class MainWindow(QMainWindow):
             layer.dataProvider().addAttributes(fields)
             layer.updateFields()
 
-    def _ensure_model(self):
-        if self.model is None and self._model_loader is not None:
-            self.model = self._model_loader()
-        return self.model is not None
-
-    def _show_classification(self, payload):
-        request_id, result = payload
-        if self._closed or request_id != self._tree_request or self._tree_record is None:
-            return
-        self._classification_pending = False
-        self._tree_record.set_classification(result)
-        self.classified_species = result["final_class"]
-        self.last_classification_result = dict(result)
-        self._update_tree_classification_label()
-        self._refresh_tree_batch_ui()
-
-
-    def _show_classification_error(self, payload):
-        request_id, message = payload
-        if self._closed or request_id != self._tree_request or self._tree_record is None:
-            return
-        self._classification_pending = False
-        self.classified_species = None
-        self.last_classification_result = None
-        self._tree_record.classification_failed(message)
-        self._update_tree_classification_label()
-        self._refresh_tree_batch_ui()
-        QMessageBox.warning(self, "Classificação não executada", message)
-
 
     def closeEvent(self, event):
         if self._tree_batch.dirty or self._has_unqueued_crown():
             answer = QMessageBox.question(self, "Árvores ainda não exportadas",
                 "Há árvores que ainda não foram exportadas. Fechar o painel e descartar essa lista?",
-                QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
-            if answer != QMessageBox.Yes:
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
+            if answer != QMessageBox.StandardButton.Yes:
                 event.ignore()
                 return
         self._closed = True
@@ -1612,8 +1262,8 @@ class MainWindow(QMainWindow):
                  ("area_tool", "polygon_tool", "m37_tool", "tool")]
         if canvas.mapTool() in tools:
             canvas.unsetMapTool(canvas.mapTool())
-        self.rubber_band.reset(QgsWkbTypes.PolygonGeometry)
-        self.executor.shutdown(wait=False, cancel_futures=True)
+        canvas.scene().removeItem(self._m37_preview)
+        self.rubber_band.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
         super().closeEvent(event)
 
 

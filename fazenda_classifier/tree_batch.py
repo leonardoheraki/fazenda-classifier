@@ -16,7 +16,7 @@ class TreeBatch:
         return tuple(deepcopy(record) for record in self._records)
 
     def add(self, record, tree_id, ua=""):
-        # Validate before changing the list. A pending worker cannot be saved.
+        # Validate the completed crown before changing the list.
         record.as_csv_row()
         tree_id, ua = str(tree_id).strip(), str(ua).strip()
         if not tree_id:

@@ -1,7 +1,6 @@
-"""CSV contracts for Fazenda ECO rev7; no QGIS, CNN or carbon calculations.
+"""Height CSV contracts and atomic exports for inventory measurements.
 
-One row is a raster sample, a delimited tree, or an RGB classification patch.
-Those observation units must never be interchanged to manufacture predictors.
+Raster sampling points must not be interpreted as individual trees.
 """
 import csv
 import math
@@ -21,27 +20,6 @@ CONGLOMERATE_FIELDS = (
     "largura_janela_m", "comprimento_janela_m", "n_pixels_janela",
     "crs_mds", "crs_mdt", "metodo_altura", *CSV_METADATA_FIELDS,
 )
-TREE_ECO_FIELDS = (
-    "arvore_id", "UA", "especie", "area_copa_m2", "altura_m",
-    "diametro_copa_max_m", "diametro_copa_equivalente_m", "x_arvore", "y_arvore",
-    "crs_trabalho", "predicted_class", "final_class", "confidence", "threshold",
-    "status", "prob_Araucaria_angustifolia", "prob_Cedrela_fissilis",
-    "prob_Ocotea_porosa", "crs_mds", "crs_mdt", "crs_rgb", "mds_no_ponto",
-    "mdt_no_ponto", "status_altura", "metodo_altura", "metodo_diametro",
-    "metodo_area", "metodo_classificacao", "patch_path", "crown_coords",
-    "detalhe_classificacao", "especie_origem", "calculo_disponivel",
-    *CSV_METADATA_FIELDS,
-)
-SPECIES_DIAGNOSTIC_FIELDS = (
-    "UA", "amostra_id", "linha", "coluna", "x_utm", "y_utm", "grid_size_m",
-    "patch_size_m", "predicted_class", "final_class", "confidence", "threshold",
-    "status", "prob_Araucaria_angustifolia", "prob_Cedrela_fissilis",
-    "prob_Ocotea_porosa", "patch_path", "crs_trabalho", "crs_rgb",
-    *CSV_METADATA_FIELDS,
-)
-SPECIES_NAMES = {name: name for name in (
-    "Araucaria angustifolia", "Cedrela fissilis", "Ocotea porosa",
-)}
 
 
 def normalized(value):
@@ -100,60 +78,6 @@ def prepare_conglomerate_rows(records, crs_work, *, require_h5=True):
     incomplete = [ua for ua, count in valid.items() if count < 5]
     if incomplete and require_h5:
         raise ValueError("O Fazenda ECO exige cinco alturas válidas por UA. Confira: " + ", ".join(incomplete))
-    return rows
-
-
-def prepare_tree_rows(records):
-    rows, seen = [], set()
-    for record in records:
-        source = record.as_csv_row()  # Blocks pending inference/incomplete crown.
-        if source["status"] != "aceita" or source["final_class"] not in SPECIES_NAMES:
-            raise ValueError(f"Fazenda ECO: a árvore {record.arvore_id} precisa de uma classificação aceita de "
-                             "araucária, cedro ou imbuia. Para dados sem classificação aceita, "
-                             "escolha o relatório completo, que preserva o diagnóstico.")
-        tree_id = str(record.arvore_id).strip()
-        ua = str(record.ua).strip()
-        if not tree_id:
-            raise ValueError("Informe o identificador da árvore antes de exportar.")
-        if (ua, tree_id) in seen:
-            raise ValueError("Há identificadores de árvore repetidos na mesma UA.")
-        seen.add((ua, tree_id))
-        row = {key: source.get(key) for key in TREE_ECO_FIELDS}
-        area = number(source["area_copa"], "Área de copa (m²)", positive=True)
-        height = source["altura"]
-        if height is not None:
-            height = number(height, "Altura (m)", positive=True)
-        for key in ("confidence", "threshold", "prob_Araucaria_angustifolia",
-                    "prob_Cedrela_fissilis", "prob_Ocotea_porosa"):
-            if row[key] is not None:
-                row[key] = number(row[key], key)
-                if not 0 <= row[key] <= 1:
-                    raise ValueError(f"{key} deve estar entre 0 e 1, sem conversão para porcentagem.")
-        if row["confidence"] is None or row["threshold"] is None or row["confidence"] < row["threshold"]:
-            raise ValueError("A classificação aceita precisa manter confiança e limiar coerentes.")
-        row.update(arvore_id=tree_id, UA=ua, especie=source["final_class"],
-                   area_copa_m2=area, altura_m=height,
-                   diametro_copa_max_m=number(source["diametro_copa"], "Diâmetro máximo (m)", positive=True),
-                   diametro_copa_equivalente_m=2 * math.sqrt(area / math.pi),
-                   especie_origem="CNN_aceita", calculo_disponivel="DAP_e_AGC" if height is not None else "somente_DAP")
-        row.update(metadata("arvore_copa", "arvore_individual_delimitada"))
-        rows.append(row)
-    if not rows:
-        raise ValueError("Não há árvores para exportar.")
-    return rows
-
-
-def prepare_species_diagnostic_rows(records, crs_work):
-    names = {"predicted_class": "pred_class", "prob_Araucaria_angustifolia": "prob_AA",
-             "prob_Cedrela_fissilis": "prob_CF", "prob_Ocotea_porosa": "prob_OP"}
-    rows = []
-    for source in records:
-        row = {key: source.get(names.get(key, key)) for key in SPECIES_DIAGNOSTIC_FIELDS}
-        row["crs_trabalho"] = crs_work
-        row.update(metadata("classificacao_grade_diagnostico", "recorte_RGB_grade_nao_e_arvore"))
-        rows.append(row)
-    if not rows:
-        raise ValueError("Não há classificações para exportar.")
     return rows
 
 

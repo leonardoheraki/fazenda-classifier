@@ -32,12 +32,12 @@ QFrame[role="status"] {
 QFrame[role="note"] {
     background: #f6f7f2; border: 1px solid #e4e8dd; border-radius: 7px;
 }
-QLineEdit, QComboBox {
+QLineEdit, QComboBox, QDoubleSpinBox {
     color: #2d4336; background: #ffffff; border: 1px solid #cfdace;
     border-radius: 5px; padding: 5px 8px; selection-background-color: #2d6549;
     selection-color: #ffffff; font-size: 12px;
 }
-QLineEdit:focus, QComboBox:focus { border: 1px solid #3c7a54; }
+QLineEdit:focus, QComboBox:focus, QDoubleSpinBox:focus { border: 1px solid #3c7a54; }
 QComboBox::drop-down { border: none; width: 24px; }
 QComboBox::down-arrow {
     image: url("__PLUGIN_DIR__/chevron_down.svg"); width: 12px; height: 12px;
@@ -58,6 +58,9 @@ QPushButton[role="primary"] {
 }
 QPushButton[role="primary"]:hover { background: #336f4d; border-color: #336f4d; }
 QPushButton[role="primary"]:pressed { background: #204e35; }
+QPushButton[role="placementMode"]:checked {
+    background: #e1ecdd; border-color: #578261; color: #244f3c;
+}
 QPushButton:disabled {
     background: #e4ebe1; color: #859b87; border-color: #dce5d8;
 }

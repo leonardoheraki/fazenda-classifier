@@ -11,7 +11,7 @@ class SpatialError(ValueError):
 
 
 def require_metric_crs(crs):
-    if not crs.isValid() or crs.isGeographic() or crs.mapUnits() != QgsUnitTypes.DistanceMeters:
+    if not crs.isValid() or crs.isGeographic() or crs.mapUnits() != QgsUnitTypes.DistanceUnit.DistanceMeters:
         raise SpatialError(
             "Escolha um SRC projetado com unidades em metros para o projeto "
             "antes de gerar parcelas, janelas ou medidas de copa."
@@ -34,6 +34,43 @@ def transform_point(point, source_crs, target_crs, project):
         return p
     except QgsCsException as error:
         raise SpatialError(f"Não foi possível transformar as coordenadas: {error}") from error
+
+
+class MetricFrame:
+    """Local metre offsets with azimuth measured clockwise from grid north."""
+
+    def __init__(self, center, azimuth=0.0):
+        if not math.isfinite(azimuth):
+            raise SpatialError("O azimute da parcela precisa ser finito.")
+        self.azimuth = azimuth % 360.0
+        self.x, self.y = center.x(), center.y()
+        radians = math.radians(self.azimuth)
+        self._sin, self._cos = math.sin(radians), math.cos(radians)
+
+    def point(self, east, north):
+        return QgsPointXY(
+            self.x + (east * self._cos + north * self._sin),
+            self.y + (-east * self._sin + north * self._cos),
+        )
+
+    def offsets(self, point):
+        dx, dy = point.x() - self.x, point.y() - self.y
+        return dx * self._cos - dy * self._sin, dx * self._sin + dy * self._cos
+
+    def ring(self, width, length, east=0.0, north=0.0):
+        half_width, half_length = width / 2, length / 2
+        corners = [
+            self.point(east - half_width, north - half_length),
+            self.point(east + half_width, north - half_length),
+            self.point(east + half_width, north + half_length),
+            self.point(east - half_width, north + half_length),
+        ]
+        return [*corners, corners[0]]
+
+    def bounds(self, width, length):
+        half_x = (width * abs(self._cos) + length * abs(self._sin)) / 2
+        half_y = (width * abs(self._sin) + length * abs(self._cos)) / 2
+        return QgsRectangle(self.x - half_x, self.y - half_y, self.x + half_x, self.y + half_y)
 
 
 class RasterSampler:
@@ -85,7 +122,7 @@ class RasterSampler:
         return self.sample_native(self.to_native(point))
 
 
-def maximum_height_window(dsm, dtm, center, width=1.0, length=10.0, max_pixels=100000):
+def maximum_height_window(dsm, dtm, center, width=1.0, length=10.0, max_pixels=100000, *, azimuth=0.0):
     """Select real DSM pixel centers inside the metric window, then sample DTM.
 
     The DSM maximum and its exported XY are in the working CRS. DTM is sampled
@@ -95,8 +132,8 @@ def maximum_height_window(dsm, dtm, center, width=1.0, length=10.0, max_pixels=1
     require_metric_crs(dsm.work_crs)
     if width <= 0 or length <= 0:
         raise SpatialError("As dimensões da janela devem ser positivas.")
-    window = QgsRectangle(center.x()-width/2, center.y()-length/2,
-                          center.x()+width/2, center.y()+length/2)
+    frame = MetricFrame(center, azimuth)
+    window = frame.bounds(width, length)
     try:
         bbox = dsm.forward.transformBoundingBox(window) if dsm.forward is not None else window
     except QgsCsException as error:
@@ -112,16 +149,29 @@ def maximum_height_window(dsm, dtm, center, width=1.0, length=10.0, max_pixels=1
     c1 = min(nx-1, math.floor((bbox.xMaximum()-extent.xMinimum())/px))
     r0 = max(0, math.floor((extent.yMaximum()-bbox.yMaximum())/py))
     r1 = min(ny-1, math.floor((extent.yMaximum()-bbox.yMinimum())/py))
-    if max(0, c1-c0+1)*max(0, r1-r0+1) > max_pixels:
-        raise SpatialError("Janela com mais de 100.000 pixels; confira SRC e resolução do MDS.")
+    formatted_limit = f"{max_pixels:,}".replace(",", ".")
+    limit_message = f"Janela com mais de {formatted_limit} pixels. Confira o SRC e a resolução do MDS."
+    if frame.azimuth == 0.0 and max(0, c1-c0+1)*max(0, r1-r0+1) > max_pixels:
+        raise SpatialError(limit_message)
+    # Floating-point tolerance for centres on a rotated edge in a projected CRS.
+    half_width, half_length = width / 2 + 1e-8, length / 2 + 1e-8
+    centres_inside = 0
     max_value, max_point, count = None, None, 0
     for row in range(r0, r1+1):
         for col in range(c0, c1+1):
             native = QgsPointXY(extent.xMinimum()+(col+0.5)*px,
                                 extent.yMaximum()-(row+0.5)*py)
             work = dsm.to_work(native)
-            if not window.contains(work):
-                continue
+            if frame.azimuth == 0.0:
+                if not window.contains(work):
+                    continue
+            else:
+                east, north = frame.offsets(work)
+                if abs(east) > half_width or abs(north) > half_length:
+                    continue
+                centres_inside += 1
+                if centres_inside > max_pixels:
+                    raise SpatialError(limit_message)
             value = dsm.sample_native(native)
             if value is None:
                 continue

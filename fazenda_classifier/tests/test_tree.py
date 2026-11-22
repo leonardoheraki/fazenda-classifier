@@ -1,4 +1,4 @@
-"""Regression tests for missing inference, stale trees, geometry and CSV output.
+"""Regression tests for stale measurements, geometry and CSV output.
 
 Run with python -m unittest discover -s tests from the plugin directory.
 No QGIS or trained model is required for these state and numerical checks.
@@ -20,16 +20,6 @@ def crown(record):
     record.set_crown([(542370, 7192080), (542378, 7192080),
                       (542378, 7192086), (542370, 7192086)])
     return record
-
-
-def result(accepted=True):
-    return dict(predicted_class="Cedrela fissilis",
-                final_class="Cedrela fissilis" if accepted else "espécie não identificada",
-                confidence=0.8 if accepted else 0.5, threshold=0.6,
-                status="aceita" if accepted else "abaixo_do_limiar",
-                prob_Araucaria_angustifolia=0.1 if accepted else 0.4,
-                prob_Cedrela_fissilis=0.8 if accepted else 0.5,
-                prob_Ocotea_porosa=0.1)
 
 
 class TreeTests(unittest.TestCase):
@@ -59,53 +49,14 @@ class TreeTests(unittest.TestCase):
         points = [(0, 0), (8, 0), (8, 6), (0, 6)]
         self.assertEqual(tree.crown_metrics(points), tree.crown_metrics(points+[points[0]]))
 
-    def test_missing_inference_is_explicit_and_never_an_unknown_species(self):
-        row = crown(self.record()).as_csv_row()
-        self.assertEqual(row["status"], "nao_executada")
-        for field in ("especie", "predicted_class", "final_class", "confidence", "threshold",
-                      *tree.PROBABILITY_FIELDS):
-            self.assertIsNone(row[field], field)
 
-    def test_new_tree_cannot_inherit_previous_tree_measurements_or_classification(self):
+    def test_new_tree_cannot_inherit_previous_tree_measurements(self):
         previous = crown(self.record())
         previous.set_height(900, 874.29)
-        previous.set_classification(result())
         current = self.record()
         self.assertIsNone(current.height)
-        self.assertIsNone(current.classification)
         self.assertIsNone(current.area)
-        self.assertEqual(current.classification_status, "nao_executada")
 
-    def test_rejected_prediction_retains_probabilities_and_threshold(self):
-        record = crown(self.record())
-        record.set_classification(result(accepted=False))
-        row = record.as_csv_row()
-        self.assertEqual(row["status"], "abaixo_do_limiar")
-        self.assertEqual(row["predicted_class"], "Cedrela fissilis")
-        self.assertEqual(row["final_class"], "espécie não identificada")
-        self.assertEqual(row["threshold"], 0.6)
-        self.assertEqual(row["confidence"], 0.5)
-
-    def test_failed_reclassification_clears_prior_prediction(self):
-        record = crown(self.record())
-        record.set_classification(result())
-        record.begin_classification()
-        record.classification_failed("RGB fora da cobertura")
-        row = record.as_csv_row()
-        self.assertEqual(row["status"], "erro_processamento")
-        self.assertIsNone(row["final_class"])
-        self.assertIsNone(row["confidence"])
-        self.assertEqual(row["detalhe_classificacao"], "RGB fora da cobertura")
-
-    def test_pending_inference_does_not_overwrite_existing_csv(self):
-        record = crown(self.record())
-        record.begin_classification()
-        with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory)/"tree.csv"
-            path.write_text("previous result")
-            with self.assertRaises(ValueError):
-                tree.write_tree_csv(path, record)
-            self.assertEqual(path.read_text(), "previous result")
 
     def test_incomplete_crown_cannot_be_exported(self):
         with self.assertRaises(ValueError):
@@ -124,7 +75,6 @@ class TreeTests(unittest.TestCase):
         record = crown(self.record())
         record.crs_mds = record.crs_mdt = record.crs_rgb = "EPSG:31982"
         record.set_height(900, 874.29)
-        record.set_classification(result())
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory)/"tree.csv"
             tree.write_tree_csv(path, record)
@@ -138,7 +88,6 @@ class TreeTests(unittest.TestCase):
         self.assertEqual(row["crs_trabalho"], "EPSG:31982")
         self.assertEqual(row["coord_tree"], "(542374.0, 7192083.0)")
         self.assertNotEqual((float(row["x_arvore"]), float(row["y_arvore"])), record.coordinates[0])
-        self.assertEqual(row["status"], "aceita")
         self.assertIn("7192080.0", row["crown_coords"])
 
 
